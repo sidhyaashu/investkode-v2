@@ -1,0 +1,5 @@
+investkode-client
+nginx
+auth_service
+watchlist_service
+.env
