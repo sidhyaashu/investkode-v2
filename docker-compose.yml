@@ -34,7 +34,6 @@ services:
     env_file:
       - .env
     environment:
-      # Map the specific REDIS_URL for auth_service
       - REDIS_URL=${AUTH_REDIS_URL}
     depends_on:
       redis:
@@ -51,12 +50,30 @@ services:
     env_file:
       - .env
     environment:
-      # Map the specific REDIS_URL for api_gateway
       - REDIS_URL=${GATEWAY_REDIS_URL}
+      - WATCHLIST_SERVICE_URL=${WATCHLIST_SERVICE_URL}
     depends_on:
       redis:
         condition: service_healthy
       auth_service:
         condition: service_started
+      watchlist_service:
+        condition: service_started
     ports:
       - "8000:8000"
+
+  watchlist_service:
+    build:
+      context: ./watchlist_service
+    container_name: investkode_watchlist_service
+    env_file:
+      - .env
+    environment:
+      - WATCHLIST_DATABASE_URL=${WATCHLIST_DATABASE_URL}
+      - FINANCIAL_DATABASE_URL=${FINANCIAL_DATABASE_URL}
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
+    depends_on:
+      auth_db:
+        condition: service_healthy
+    ports:
+      - "8002:8000"

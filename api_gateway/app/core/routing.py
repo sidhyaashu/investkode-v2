@@ -17,6 +17,14 @@ ROUTES = {
         "timeout": 15.0,
         "cache_ttl": 0,
     },
+    "/api/v1/watchlists": {
+        "service_name": "watchlist_service",
+        "target": settings.WATCHLIST_SERVICE_URL,
+        "auth_required": True,
+        "strip_prefix": False,
+        "timeout": 10.0,
+        "cache_ttl": 0,
+    }
 }
 
 

@@ -5,6 +5,7 @@ from app.proxy.circuit_breaker import DistributedCircuitBreaker
 from app.proxy.retry import retry
 from app.core.http_client import http_client
 from app.core.redis import redis_client
+from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ ALLOWED_HEADERS = {
     "x-request-id",
     "user-agent",
     "accept",
+    "x-internal-secret",
 }
 
 SAFE_RESPONSE_HEADERS = {
@@ -55,8 +57,10 @@ def build_headers(request: Request):
             header_name = f"X-{attr.replace('_', '-').title()}"
             headers[header_name] = str(val)
 
-    return headers
+    # Internal service-to-service protection
+    headers["x-internal-secret"] = settings.INTERNAL_SECRET
 
+    return headers
 
 async def proxy_request(request: Request, route_config: dict, path: str):
     """
