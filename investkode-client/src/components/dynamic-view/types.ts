@@ -82,13 +82,38 @@ export type WatchlistKpiCard = {
   tone?: "positive" | "negative" | "neutral" | "accent";
 };
 
+export type ViewPagination = {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+};
+
 export type DynamicRow = {
   id: string;
   values: Record<string, unknown>;
   meta?: {
     list_ids?: string[];
     draggable?: boolean;
-    logo_colors?: [string, string];
+
+    logo?: {
+      type?: "initials" | "image" | "symbol";
+      label?: string;
+      image_url?: string | null;
+
+      /**
+       * Server can send semantic variant.
+       * Client maps this to design token.
+       */
+      variant?: "default" | "bank" | "it" | "energy" | "finance" | "consumer";
+
+      /**
+       * Optional. Use only if backend sends validated color/gradient.
+       * Do not hardcode this in frontend sample data.
+       */
+      background?: string;
+    };
+
     sector_tone?: string;
   };
   _row?: {
@@ -144,6 +169,7 @@ export type DynamicView = {
   data?: {
     rows?: DynamicRow[];
   };
+  pagination?: ViewPagination;
 
   empty_state?: {
     title: string;

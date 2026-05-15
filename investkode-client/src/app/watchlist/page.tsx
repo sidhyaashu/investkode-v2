@@ -210,24 +210,24 @@ const watchlistView: DynamicViewResponse = {
             change_percent: 0.94,
             low_52w: 1363,
             high_52w: 1791,
-            market_cap: "₹11.2L Cr",
+            market_cap: "11.2L Cr",
             pe: 19.8,
             sector: "Banks & NBFC",
           },
-
-          // ✅ ADD THIS
           meta: {
             list_ids: ["core", "banks"],
             draggable: true,
-            logo_colors: ["#10A37F", "#4ADE80"],
+            logo: {
+              type: "initials",
+              label: "HB",
+              variant: "bank",
+            },
           },
-
           _row: {
             expandable: true,
             expansion_key: "company_snapshot",
           },
         },
-
         {
           id: "icicibank",
           values: {
@@ -238,24 +238,24 @@ const watchlistView: DynamicViewResponse = {
             change_percent: 0.62,
             low_52w: 946,
             high_52w: 1257,
-            market_cap: "₹7.9L Cr",
+            market_cap: "7.9L Cr",
             pe: 18.4,
             sector: "Banks & NBFC",
           },
-
-          // ✅ ADD THIS
           meta: {
             list_ids: ["core", "banks"],
             draggable: true,
-            logo_colors: ["#10A37F", "#4ADE80"],
+            logo: {
+              type: "initials",
+              label: "IB",
+              variant: "bank",
+            },
           },
-
           _row: {
             expandable: true,
             expansion_key: "company_snapshot",
           },
         },
-
         {
           id: "reliance",
           values: {
@@ -266,16 +266,18 @@ const watchlistView: DynamicViewResponse = {
             change_percent: 0.42,
             low_52w: 2580,
             high_52w: 3200,
-            market_cap: "₹20.2L Cr",
+            market_cap: "20.2L Cr",
             pe: 26.8,
             sector: "Energy",
           },
-
-          // ✅ ADD THIS
           meta: {
             list_ids: ["core"],
             draggable: true,
-            logo_colors: ["#0B2545", "#5B72A0"],
+            logo: {
+              type: "initials",
+              label: "RI",
+              variant: "energy",
+            },
           },
           _row: {
             expandable: true,
@@ -283,6 +285,12 @@ const watchlistView: DynamicViewResponse = {
           },
         },
       ],
+    },
+    pagination: {
+      page: 1,
+      page_size: 25,
+      total_items: 3,
+      total_pages: 1,
     },
   },
 };

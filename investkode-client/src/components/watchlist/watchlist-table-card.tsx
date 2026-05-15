@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  ArrowClockwiseIcon,
-  DownloadSimpleIcon,
-  DotsSixVerticalIcon,
-  PlusIcon,
-  StarIcon,
+  ArrowClockwise,
+  DownloadSimple,
+  DotsSixVertical,
+  Plus,
+  Star,
 } from "@phosphor-icons/react";
 import type { DynamicColumn, DynamicRow } from "@/components/dynamic-view/types";
 import { RenderCell } from "@/components/dynamic-view/registry/cell-renderer-registry";
@@ -65,7 +65,7 @@ export function WatchlistTableCard({
     <section className="overflow-hidden rounded-[18px] border border-[var(--ik-glass-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.55))] shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_8px_24px_-10px_rgba(43,69,112,0.16)] backdrop-blur-xl dark:bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(18,18,21,0.62))] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_8px_24px_-10px_rgba(0,0,0,0.6)]">
       <div className="flex flex-wrap items-center justify-between gap-3.5 border-b border-[var(--ik-rule)] px-[18px] py-3.5">
         <div className="flex items-center gap-2.5 font-sans text-sm font-semibold text-[var(--ik-ink)]">
-          <StarIcon size={16} className="text-[var(--ik-accent-deep)]" />
+          <Star size={16} className="text-[var(--ik-accent-deep)]" />
           <span>{title}</span>
           <span className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-[var(--ik-ink-3)]">
             {rows.length} {rows.length === 1 ? "item" : "items"}
@@ -74,12 +74,12 @@ export function WatchlistTableCard({
 
         <div className="flex items-center gap-1.5">
           <ToolButton onClick={onReset}>
-            <ArrowClockwiseIcon size={12} />
+            <ArrowClockwise size={12} />
             Reset
           </ToolButton>
 
           <ToolButton disabled={!allowExport}>
-            <DownloadSimpleIcon size={12} />
+            <DownloadSimple size={12} />
             Export
           </ToolButton>
 
@@ -89,7 +89,7 @@ export function WatchlistTableCard({
               onClick={onAddStock}
               className="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-[linear-gradient(135deg,var(--ik-accent),var(--ik-accent-2))] px-2.5 py-1.5 font-sans text-xs font-medium text-white shadow-[0_3px_10px_-2px_rgba(43,107,255,0.35)] transition hover:translate-y-[-1px] dark:text-black"
             >
-              <PlusIcon size={12} weight="bold" />
+              <Plus size={12} weight="bold" />
               Add stock
             </button>
           ) : null}
@@ -128,11 +128,14 @@ export function WatchlistTableCard({
                 const overTop = dragOver?.id === row.id && dragOver.position === "top";
                 const overBottom = dragOver?.id === row.id && dragOver.position === "bottom";
 
+                const canDragRow = allowDragReorder && row.meta?.draggable !== false;
+
                 return (
                   <TableRow
                     key={row.id}
-                    draggable={allowDragReorder}
+                    draggable={canDragRow}
                     onDragStart={(event) => {
+                      if (!canDragRow) return;
                       setDragId(row.id);
                       event.dataTransfer.effectAllowed = "move";
                     }}
@@ -141,7 +144,7 @@ export function WatchlistTableCard({
                       setDragOver(null);
                     }}
                     onDragOver={(event) => {
-                      if (!allowDragReorder) return;
+                      if (!canDragRow) return;
 
                       event.preventDefault();
 
@@ -156,7 +159,7 @@ export function WatchlistTableCard({
                     onDrop={(event) => {
                       event.preventDefault();
 
-                      if (!dragOver) return;
+                      if (!dragOver || !canDragRow) return;
 
                       reorder(row.id, dragOver.position);
                       setDragId(null);
@@ -171,10 +174,12 @@ export function WatchlistTableCard({
                   >
                     {allowDragReorder ? (
                       <TableCell className="w-8 px-2 text-center text-[var(--ik-ink-4)]">
-                        <DotsSixVerticalIcon
-                          size={16}
-                          className="cursor-grab opacity-60 transition hover:text-[var(--ik-accent-deep)] hover:opacity-100 active:cursor-grabbing"
-                        />
+                        {canDragRow ? (
+                          <DotsSixVertical
+                            size={16}
+                            className="cursor-grab opacity-60 transition hover:text-[var(--ik-accent-deep)] hover:opacity-100 active:cursor-grabbing"
+                          />
+                        ) : null}
                       </TableCell>
                     ) : null}
 
@@ -197,7 +202,7 @@ export function WatchlistTableCard({
               <TableRow>
                 <TableCell colSpan={columns.length + 1}>
                   <div className="px-5 py-[60px] text-center text-[var(--ik-ink-3)]">
-                    <StarIcon size={48} className="mx-auto mb-3 text-[var(--ik-ink-4)]" />
+                    <Star size={48} className="mx-auto mb-3 text-[var(--ik-ink-4)]" />
                     <h3 className="mb-1 font-sans text-base font-semibold text-[var(--ik-ink-2)]">
                       This list is empty
                     </h3>

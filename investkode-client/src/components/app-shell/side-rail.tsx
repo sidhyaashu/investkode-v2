@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 const nav = [
   { href: "/", icon: HouseIcon, label: "Home" },
@@ -21,6 +22,12 @@ const nav = [
 
 export function SideRail() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const isDark = theme === "dark";
 
   return (
@@ -52,7 +59,13 @@ export function SideRail() {
         onClick={() => setTheme(isDark ? "light" : "dark")}
         className="grid size-[34px] place-items-center rounded-[10px] text-[var(--ik-ink-2)] transition hover:bg-white/70 hover:text-[var(--ik-accent-deep)] dark:hover:bg-white/10"
       >
-        {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+        {!mounted ? (
+          <div className="size-[18px] animate-pulse rounded-full bg-[var(--ik-rule)]" />
+        ) : isDark ? (
+          <SunIcon size={18} />
+        ) : (
+          <MoonIcon size={18} />
+        )}
       </button>
     </aside>
   );

@@ -2,6 +2,8 @@ import type { DynamicColumn, DynamicRow } from "../types";
 import { formatValue } from "./formatter-registry";
 import { toneClass } from "./tone-registry";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "../cells/company-logo";
+import { WatchlistRowActions } from "@/components/watchlist/watchlist-row-actions";
 
 type CellProps = {
   column: DynamicColumn;
@@ -20,13 +22,11 @@ export function RenderCell({ column, row }: CellProps) {
       const company = row.values.company_name ?? row.values.name ?? value;
       const symbol = row.values.symbol ?? row.values.ticker;
       const exchange = row.values.exchange ?? "NSE";
-      const initials = String(symbol || company || "IK").slice(0, 2).toUpperCase();
 
       return (
         <div className="flex min-w-[220px] items-center gap-2.5">
-          <div className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-[linear-gradient(135deg,var(--ik-accent),var(--ik-accent-2))] font-mono text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(43,107,255,0.25)] dark:text-black">
-            {initials}
-          </div>
+          <CompanyLogo row={row} />
+
           <div className="min-w-0">
             <div className="truncate font-sans text-[13px] font-semibold text-[var(--ik-ink)]">
               {String(company ?? "—")}
@@ -97,11 +97,7 @@ export function RenderCell({ column, row }: CellProps) {
       );
 
     case "actions":
-      return (
-        <button className="rounded-lg border border-[var(--ik-rule)] bg-white/50 px-2.5 py-1.5 text-[11px] font-semibold text-[var(--ik-ink-2)] hover:bg-white/80 dark:bg-white/5 dark:hover:bg-white/10">
-          Open
-        </button>
-      );
+      return <WatchlistRowActions row={row} />;
 
     case "text":
     default:

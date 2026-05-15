@@ -2,7 +2,7 @@
 
 import type { WatchlistTab } from "@/components/dynamic-view/types";
 import { cn } from "@/lib/utils";
-import { PlusIcon, StarIcon } from "@phosphor-icons/react";
+import { Plus, Star } from "@phosphor-icons/react";
 
 const toneDotClass: Record<string, string> = {
   blue: "bg-[#2B6BFF]",
@@ -44,7 +44,7 @@ export function WatchlistTabs({
               )}
             >
               {tab.id === "all" ? (
-                <StarIcon size={13} />
+                <Star size={13} />
               ) : (
                 <span className={cn("inline-block size-2 rounded-[2px]", toneDotClass[tab.tone ?? "neutral"])} />
               )}
@@ -70,7 +70,7 @@ export function WatchlistTabs({
           onClick={onCreateList}
           className="inline-flex shrink-0 items-center gap-[7px] rounded-[9px] border border-dashed border-[var(--ik-rule)] px-[13px] py-2 font-sans text-[13px] font-medium text-[var(--ik-ink-3)] transition hover:border-[var(--ik-accent-2)] hover:bg-[var(--ik-accent-soft)] hover:text-[var(--ik-accent-deep)] dark:hover:border-white/25 dark:hover:bg-white/[0.04] dark:hover:text-white"
         >
-          <PlusIcon size={13} weight="bold" />
+          <Plus size={13} weight="bold" />
           New list
         </button>
       ) : null}

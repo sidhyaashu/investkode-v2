@@ -1,13 +1,14 @@
 "use client";
 
-import { MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
+import { MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { DynamicView, DynamicRow } from "@/components/dynamic-view/types";
 import { WatchlistKpiStrip } from "./watchlist-kpi-strip";
 import { WatchlistTabs } from "./watchlist-tabs";
 import { WatchlistTableCard } from "./watchlist-table-card";
-import { AddStockModal, type StockSearchItem } from "./add-stock-modal";
+import { ViewPagination } from "@/components/dynamic-view/pagination/view-pagination";
+import { WatchlistActionModal, type StockSearchItem } from "./watchlist-action-modal";
 
 const MOCK_UNIVERSE: StockSearchItem[] = [
   {
@@ -48,10 +49,11 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
   const [activeListId, setActiveListId] = useState(view.watchlist?.active_list_id ?? "all");
   const [rows, setRows] = useState<DynamicRow[]>(view.data?.rows ?? []);
   const [query, setQuery] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState<"add" | "create" | null>(null);
 
   const watchlist = view.watchlist;
   const columns = view.columns ?? [];
+  const pagination = view.pagination;
 
   const visibleRows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -103,7 +105,11 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
       meta: {
         list_ids: activeListId === "all" ? [] : [activeListId],
         draggable: true,
-        logo_colors: stock.color,
+        logo: {
+          type: "initials",
+          label: stock.ticker.slice(0, 2).toUpperCase(),
+          variant: "default",
+        },
       },
       _row: {
         expandable: true,
@@ -112,7 +118,7 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
     };
 
     setRows((prev) => [newRow, ...prev]);
-    setModalOpen(false);
+    setActionModalMode(null);
     toast.success(`Added ${stock.ticker} to your watchlist`);
   }
 
@@ -138,16 +144,16 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
         ) : null}
 
         <section className="flex items-center gap-2.5 rounded-[14px] border border-[var(--ik-glass-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.85),rgba(255,255,255,0.60))] py-1.5 pl-4 pr-1.5 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_6px_20px_-8px_rgba(43,69,112,0.18)] transition focus-within:border-[var(--ik-accent-2)] focus-within:shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_6px_20px_-8px_rgba(43,107,255,0.32),0_0_0_4px_var(--ik-accent-soft)] dark:bg-[linear-gradient(180deg,rgba(28,28,32,0.88),rgba(20,20,23,0.70))]">
-          <MagnifyingGlassIcon size={16} className="shrink-0 text-[var(--ik-ink-3)]" />
+          <MagnifyingGlass size={16} className="shrink-0 text-[var(--ik-ink-3)]" />
 
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") setModalOpen(true);
+              if (event.key === "Enter") setActionModalMode("add");
               if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
                 event.preventDefault();
-                setModalOpen(true);
+                setActionModalMode("add");
               }
             }}
             placeholder="Search your watchlist or add a stock — e.g. TCS, Reliance, Bajaj Finance…"
@@ -161,10 +167,10 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
           {watchlist?.allow_add_stock ? (
             <button
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={() => setActionModalMode("add")}
               className="inline-flex items-center gap-[7px] rounded-[10px] border-0 bg-[linear-gradient(135deg,var(--ik-accent),var(--ik-accent-2))] px-3.5 py-2.5 font-sans text-[13px] font-semibold tracking-[-0.005em] text-white shadow-[0_4px_12px_-2px_rgba(43,107,255,0.45)] transition hover:translate-y-[-1px] dark:text-black"
             >
-              <PlusIcon size={14} weight="bold" />
+              <Plus size={14} weight="bold" />
               Add stock
             </button>
           ) : null}
@@ -178,7 +184,7 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
             activeListId={activeListId}
             onChange={setActiveListId}
             allowNewList={watchlist.allow_new_list}
-            onCreateList={() => toast.info("New list creation will call watchlist CRUD API")}
+            onCreateList={() => setActionModalMode("create")}
           />
         ) : null}
 
@@ -189,7 +195,7 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
           allowExport={watchlist?.allow_export}
           allowAddStock={watchlist?.allow_add_stock}
           allowDragReorder={watchlist?.allow_drag_reorder}
-          onAddStock={() => setModalOpen(true)}
+          onAddStock={() => setActionModalMode("add")}
           onReset={() => {
             setQuery("");
             setActiveListId("all");
@@ -202,15 +208,27 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
             toast.success("Manual order updated");
           }}
         />
+
+        {pagination && pagination.total_pages > 1 ? (
+          <ViewPagination
+            page={pagination.page}
+            totalPages={pagination.total_pages}
+            onPrevious={() => {}}
+            onNext={() => {}}
+          />
+        ) : null}
       </div>
 
-      <AddStockModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        universe={MOCK_UNIVERSE}
-        trackedTickers={rows.map((row) => String(row.values.symbol))}
-        onAdd={addStock}
-      />
+      {actionModalMode ? (
+        <WatchlistActionModal
+          mode={actionModalMode}
+          onClose={() => setActionModalMode(null)}
+          universe={MOCK_UNIVERSE}
+          trackedTickers={rows.map((row) => String(row.values.symbol))}
+          onAdd={addStock}
+          initialWatchlistId={activeListId === "all" ? undefined : activeListId}
+        />
+      ) : null}
     </>
   );
 }
