@@ -3,8 +3,8 @@ from fastapi.responses import JSONResponse
 from app.core.response import error_response
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware  # 🌟 UPGRADE
-from prometheus_fastapi_instrumentator import Instrumentator  # 🌟 UPGRADE
+from fastapi.middleware.gzip import GZipMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator 
 
 from app.api.health import router as health_router
 from app.api.proxy import router as proxy_router
@@ -80,7 +80,6 @@ app.add_middleware(AuthMiddleware)
 app.add_middleware(RateLimitMiddleware)
 # Routes
 app.include_router(health_router, prefix="/api/v1")
-app.include_router(proxy_router)  # Catch-all proxy
+app.include_router(proxy_router)  
 
-# 🌟 UPGRADE: Expose /metrics for Prometheus/Grafana (Must be at the end)
 Instrumentator().instrument(app).expose(app)

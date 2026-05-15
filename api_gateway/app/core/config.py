@@ -11,7 +11,6 @@ class Settings(BaseSettings):
 
     # Services
     AUTH_SERVICE_URL: str
-    WATCHLIST_SERVICE_URL: str
 
     # Redis
     REDIS_URL: str
