@@ -41,7 +41,7 @@ export function AuthPage() {
 
     setTimeout(() => {
       setState("success");
-    }, 800);
+    }, 8000);
   }
 
 

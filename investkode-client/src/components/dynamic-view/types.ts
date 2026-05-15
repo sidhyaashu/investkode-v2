@@ -39,35 +39,42 @@ export type Formatter =
   | "market_cap"
   | "pe";
 
-export type DynamicColumn = {
-  key: string;
-  label: string;
-  renderer?: CellRenderer;
-  formatter?: Formatter;
-  align?: "left" | "center" | "right";
-  width?: number;
-  min_width?: number;
-  sortable?: boolean;
-  tone_rule?: string;
-};
+export type WatchlistType =
+  | "all"
+  | "core"
+  | "it"
+  | "banks"
+  | "speculative"
+  | "growth"
+  | "custom";
 
-
-export type DynamicViewResponse = {
-  success: boolean;
-  status: "ok" | "partial" | "error" | "permission_denied";
-  request_id?: string;
-  schema_version: string;
-  view: DynamicView;
-};
-
-
+export type WatchlistSource = "default" | "user";
 
 export type WatchlistTab = {
   id: string;
   label: string;
   count: number;
-  tone?: "blue" | "green" | "yellow" | "red" | "neutral";
+
+  /**
+   * Server sends semantic type only.
+   * Client maps type to style/icon/color.
+   */
+  type: WatchlistType;
+
+  /**
+   * default = predefined system list
+   * user = custom user-created list
+   */
+  source: WatchlistSource;
+
   is_default?: boolean;
+};
+
+export type WatchlistPreset = {
+  id: string;
+  label: string;
+  description: string;
+  type: WatchlistType;
 };
 
 export type WatchlistKpiCard = {
@@ -75,11 +82,20 @@ export type WatchlistKpiCard = {
   label: string;
   value: string | number;
   suffix?: string;
-  sub_value?: string;
-  sub_tone?: "positive" | "negative" | "neutral";
   helper?: string;
+
+  /**
+   * For Best/Worst cards
+   */
+  name?: string;
+  symbol?: string;
+  price?: string | number;
+  change?: string | number;
+
+  sub_value?: string;
+  sub_tone?: "positive" | "negative" | "warning" | "neutral" | "info";
   sparkline?: number[];
-  tone?: "positive" | "negative" | "neutral" | "accent";
+  tone?: "positive" | "negative" | "warning" | "neutral" | "info" | "accent";
 };
 
 export type ViewPagination = {
@@ -92,6 +108,7 @@ export type ViewPagination = {
 export type DynamicRow = {
   id: string;
   values: Record<string, unknown>;
+
   meta?: {
     list_ids?: string[];
     draggable?: boolean;
@@ -102,25 +119,32 @@ export type DynamicRow = {
       image_url?: string | null;
 
       /**
-       * Server can send semantic variant.
-       * Client maps this to design token.
+       * Server gives semantic business category.
+       * Client maps it to visual treatment.
        */
-      variant?: "default" | "bank" | "it" | "energy" | "finance" | "consumer";
-
-      /**
-       * Optional. Use only if backend sends validated color/gradient.
-       * Do not hardcode this in frontend sample data.
-       */
-      background?: string;
+      variant?: WatchlistType | "energy" | "finance" | "consumer" | "default";
     };
 
-    sector_tone?: string;
+    sector_tone?: "positive" | "negative" | "warning" | "neutral" | "info";
   };
+
   _row?: {
     expandable?: boolean;
     expansion_key?: string;
     tone?: Tone;
   };
+};
+
+export type DynamicColumn = {
+  key: string;
+  label: string;
+  renderer?: CellRenderer;
+  formatter?: Formatter;
+  align?: "left" | "center" | "right";
+  width?: number;
+  min_width?: number;
+  sortable?: boolean;
+  tone_rule?: string;
 };
 
 export type DynamicView = {
@@ -131,8 +155,20 @@ export type DynamicView = {
 
   watchlist?: {
     active_list_id: string;
+
+    /**
+     * Includes default + user-created lists.
+     */
     tabs: WatchlistTab[];
+
+    /**
+     * Only used in New List flow.
+     * Server returns semantic preset types, no colors/icons.
+     */
+    presets: WatchlistPreset[];
+
     kpis: WatchlistKpiCard[];
+
     allow_new_list: boolean;
     allow_add_stock: boolean;
     allow_drag_reorder: boolean;
@@ -186,4 +222,12 @@ export type DynamicView = {
     data_quality?: string;
     last_updated?: string;
   };
+};
+
+export type DynamicViewResponse = {
+  success: boolean;
+  status: "ok" | "partial" | "error" | "permission_denied";
+  request_id?: string;
+  schema_version: string;
+  view: DynamicView;
 };

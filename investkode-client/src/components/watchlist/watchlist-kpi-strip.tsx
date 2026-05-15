@@ -13,38 +13,64 @@ export function WatchlistKpiStrip({ cards }: { cards: WatchlistKpiCard[] }) {
             {card.label}
           </div>
 
-          <div
-            className={cn(
-              "mt-1 font-mono text-2xl font-bold leading-none tracking-[-0.01em] text-[var(--ik-ink)]",
-              card.tone === "positive" && "text-[var(--ik-good)]",
-              card.tone === "negative" && "text-[var(--ik-danger-deep)]"
-            )}
-          >
-            {card.value}
-            {card.suffix ? (
-              <small className="ml-1 text-xs font-medium text-[var(--ik-ink-3)]">
-                {card.suffix}
-              </small>
-            ) : null}
-          </div>
-
-          {card.sub_value ? (
-            <div
-              className={cn(
-                "mt-1.5 font-sans text-[11.5px] text-[var(--ik-ink-2)]",
-                card.sub_tone === "positive" && "text-[var(--ik-good)]",
-                card.sub_tone === "negative" && "text-[var(--ik-danger-deep)]"
-              )}
-            >
-              {card.sub_value}
+          {card.symbol ? (
+            <div className="mt-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="truncate font-sans text-[13px] font-bold text-[var(--ik-ink)]">
+                  {card.name}
+                </div>
+                <div
+                  className={cn(
+                    "font-mono text-[13px] font-bold",
+                    card.tone === "positive" && "text-[var(--ik-good)]",
+                    card.tone === "negative" && "text-[var(--ik-danger-deep)]"
+                  )}
+                >
+                  {card.value}
+                  {card.suffix}
+                </div>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-px font-mono text-[10px] uppercase tracking-wider text-[var(--ik-ink-3)]">
+                <span>{card.symbol}</span>
+                <span>{card.price}</span>
+              </div>
             </div>
-          ) : null}
+          ) : (
+            <>
+              <div
+                className={cn(
+                  "mt-1 font-mono text-2xl font-bold leading-none tracking-[-0.01em] text-[var(--ik-ink)]",
+                  card.tone === "positive" && "text-[var(--ik-good)]",
+                  card.tone === "negative" && "text-[var(--ik-danger-deep)]"
+                )}
+              >
+                {card.value}
+                {card.suffix ? (
+                  <small className="ml-1 text-xs font-medium text-[var(--ik-ink-3)]">
+                    {card.suffix}
+                  </small>
+                ) : null}
+              </div>
 
-          {card.helper ? (
-            <div className="mt-1.5 font-sans text-[11.5px] text-[var(--ik-ink-2)]">
-              {card.helper}
-            </div>
-          ) : null}
+              {card.sub_value ? (
+                <div
+                  className={cn(
+                    "mt-1.5 font-sans text-[11.5px] text-[var(--ik-ink-2)]",
+                    card.sub_tone === "positive" && "text-[var(--ik-good)]",
+                    card.sub_tone === "negative" && "text-[var(--ik-danger-deep)]"
+                  )}
+                >
+                  {card.sub_value}
+                </div>
+              ) : null}
+
+              {card.helper ? (
+                <div className="mt-1.5 font-sans text-[11.5px] text-[var(--ik-ink-2)]">
+                  {card.helper}
+                </div>
+              ) : null}
+            </>
+          )}
 
           {card.sparkline?.length ? <Sparkline values={card.sparkline} tone={card.tone} /> : null}
         </article>

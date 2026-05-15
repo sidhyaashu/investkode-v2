@@ -7,7 +7,11 @@ import {
   Plus,
   Star,
 } from "@phosphor-icons/react";
-import type { DynamicColumn, DynamicRow } from "@/components/dynamic-view/types";
+import type {
+  DynamicColumn,
+  DynamicRow,
+  WatchlistTab,
+} from "@/components/dynamic-view/types";
 import { RenderCell } from "@/components/dynamic-view/registry/cell-renderer-registry";
 import {
   Table,
@@ -24,22 +28,30 @@ export function WatchlistTableCard({
   title,
   rows,
   columns,
+  lists = [],
   allowExport,
   allowAddStock,
   allowDragReorder,
   onAddStock,
   onReset,
   onRowsReorder,
+  sortKey,
+  sortDir,
+  onSort,
 }: {
   title: string;
   rows: DynamicRow[];
   columns: DynamicColumn[];
+  lists?: WatchlistTab[];
   allowExport?: boolean;
   allowAddStock?: boolean;
   allowDragReorder?: boolean;
   onAddStock: () => void;
   onReset?: () => void;
   onRowsReorder?: (rows: DynamicRow[]) => void;
+  sortKey?: string | null;
+  sortDir?: "asc" | "desc" | null;
+  onSort?: (key: string) => void;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<{ id: string; position: "top" | "bottom" } | null>(null);
@@ -104,20 +116,40 @@ export function WatchlistTableCard({
                 <TableHead className="w-8 bg-white/40 dark:bg-[rgba(18,18,21,0.55)]" />
               ) : null}
 
-              {columns.map((column) => (
-                <TableHead
-                  key={column.key}
-                  className={cn(
-                    "sticky top-0 h-10 whitespace-nowrap border-b border-[var(--ik-rule)] bg-white/40 px-3.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--ik-ink-3)] dark:bg-[rgba(18,18,21,0.55)]",
-                    column.align === "right" && "text-right",
-                    column.align === "center" && "text-center"
-                  )}
-                  style={{ width: column.width, minWidth: column.min_width }}
-                >
-                  {column.label}
-                  {column.sortable ? <span className="ml-1 opacity-50">↕</span> : null}
-                </TableHead>
-              ))}
+              {columns.map((column) => {
+                const isActive = sortKey === column.key;
+                const canSort = column.sortable !== false;
+
+                return (
+                  <TableHead
+                    key={column.key}
+                    onClick={() => canSort && onSort?.(column.key)}
+                    className={cn(
+                      "sticky top-0 h-10 whitespace-nowrap border-b border-[var(--ik-rule)] bg-white/40 px-3.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--ik-ink-3)] dark:bg-[rgba(18,18,21,0.55)]",
+                      column.align === "right" && "text-right",
+                      column.align === "center" && "text-center",
+                      canSort && "cursor-pointer select-none hover:text-[var(--ik-ink-2)]"
+                    )}
+                    style={{ width: column.width, minWidth: column.min_width }}
+                  >
+                    <div className={cn(
+                      "flex items-center gap-1",
+                      column.align === "right" && "justify-end",
+                      column.align === "center" && "justify-center"
+                    )}>
+                      {column.label}
+                      {canSort ? (
+                        <span className={cn(
+                          "text-[9px] transition-opacity",
+                          isActive ? "opacity-100 text-[var(--ik-accent-deep)]" : "opacity-30"
+                        )}>
+                          {isActive ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                        </span>
+                      ) : null}
+                    </div>
+                  </TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
 
@@ -192,7 +224,7 @@ export function WatchlistTableCard({
                           column.align === "center" && "text-center"
                         )}
                       >
-                        <RenderCell column={column} row={row} />
+                        <RenderCell column={column} row={row} lists={lists} />
                       </TableCell>
                     ))}
                   </TableRow>

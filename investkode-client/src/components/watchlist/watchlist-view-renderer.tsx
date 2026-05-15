@@ -16,7 +16,7 @@ const MOCK_UNIVERSE: StockSearchItem[] = [
     name: "Tata Consultancy Services",
     sector: "IT services",
     price: 3842.1,
-    change: -2.4,
+    change: -0.42,
     color: ["#2B6BFF", "#5C8DFF"],
   },
   {
@@ -24,32 +24,52 @@ const MOCK_UNIVERSE: StockSearchItem[] = [
     name: "Reliance Industries",
     sector: "Energy",
     price: 2986.2,
-    change: 0.42,
+    change: 0.78,
     color: ["#0B2545", "#5B72A0"],
   },
   {
     ticker: "BAJFINANCE",
     name: "Bajaj Finance",
     sector: "Banks & NBFC",
-    price: 7420,
-    change: 3.1,
+    price: 7420.8,
+    change: 1.32,
     color: ["#E29A2B", "#FBBF24"],
   },
   {
-    ticker: "WIPRO",
-    name: "Wipro",
+    ticker: "HDFCBANK",
+    name: "HDFC Bank",
+    sector: "Banks & NBFC",
+    price: 1428.6,
+    change: 2.04,
+    color: ["#2B6BFF", "#5C8DFF"],
+  },
+  {
+    ticker: "INFY",
+    name: "Infosys",
     sector: "IT services",
-    price: 284,
-    change: -1.8,
+    price: 1542.45,
+    change: -1.2,
+    color: ["#0B2545", "#5B72A0"],
+  },
+  {
+    ticker: "ZOMATO",
+    name: "Zomato Ltd",
+    sector: "Consumer",
+    price: 184.2,
+    change: 3.45,
     color: ["#E2557A", "#FB7185"],
   },
 ];
 
 export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
   const [activeListId, setActiveListId] = useState(view.watchlist?.active_list_id ?? "all");
+  const [tabs, setTabs] = useState(view.watchlist?.tabs ?? []);
   const [rows, setRows] = useState<DynamicRow[]>(view.data?.rows ?? []);
   const [query, setQuery] = useState("");
   const [actionModalMode, setActionModalMode] = useState<"add" | "create" | null>(null);
+
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
 
   const watchlist = view.watchlist;
   const columns = view.columns ?? [];
@@ -58,7 +78,7 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
   const visibleRows = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    return rows.filter((row) => {
+    let result = rows.filter((row) => {
       const listIds = row.meta?.list_ids ?? [];
 
       const listMatch =
@@ -72,24 +92,87 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
 
       return listMatch && searchMatch;
     });
-  }, [rows, activeListId, query]);
 
-  const activeTabLabel =
-    watchlist?.tabs.find((tab) => tab.id === activeListId)?.label ?? "All stocks";
+    if (sortKey && sortDir) {
+      result = [...result].sort((a, b) => {
+        const aVal = a.values[sortKey];
+        const bVal = b.values[sortKey];
 
-  function addStock(stock: StockSearchItem) {
-    const exists = rows.some((row) => row.values.symbol === stock.ticker);
+        if (aVal === bVal) return 0;
+        if (aVal === null || aVal === undefined) return 1;
+        if (bVal === null || bVal === undefined) return -1;
 
-    if (exists) {
-      toast.error(`${stock.ticker} is already on your watchlist`);
-      return;
+        const comparison = aVal > bVal ? 1 : -1;
+        return sortDir === "asc" ? comparison : -comparison;
+      });
     }
 
+    return result;
+  }, [rows, activeListId, query, sortKey, sortDir]);
+
+  const activeTabLabel =
+    tabs.find((tab) => tab.id === activeListId)?.label ?? "All stocks";
+
+  function handleActionModalFinish(data: {
+    mode: "add" | "create";
+    name?: string;
+    type?: any;
+    instruments: StockSearchItem[];
+    targetWatchlistId?: string;
+  }) {
+    if (data.mode === "create") {
+      const newListId = `wl_user_${Date.now()}`;
+      const newTab = {
+        id: newListId,
+        label: data.name || "New List",
+        count: data.instruments.length,
+        type: data.type || "custom",
+        source: "user" as const,
+      };
+
+      setTabs((prev) => [...prev, newTab]);
+
+      const newRows = data.instruments.map((stock) => createRow(stock, [newListId]));
+      setRows((prev) => [...newRows, ...prev]);
+
+      setActiveListId(newListId);
+      toast.success(`Created list "${data.name}" with ${data.instruments.length} stocks`);
+    } else {
+      const targetId = data.targetWatchlistId || activeListId;
+
+      setRows((prev) => {
+        const next = [...prev];
+        data.instruments.forEach((stock) => {
+          const existing = next.find((r) => r.values.symbol === stock.ticker);
+          if (existing) {
+            existing.meta = {
+              ...existing.meta,
+              list_ids: Array.from(new Set([...(existing.meta?.list_ids ?? []), targetId])),
+            };
+          } else {
+            next.unshift(createRow(stock, [targetId]));
+          }
+        });
+        return next;
+      });
+
+      setTabs((prev) =>
+        prev.map((tab) =>
+          tab.id === targetId ? { ...tab, count: tab.count + data.instruments.length } : tab
+        )
+      );
+
+      toast.success(`Added ${data.instruments.length} stocks to watchlist`);
+    }
+    setActionModalMode(null);
+  }
+
+  function createRow(stock: StockSearchItem, listIds: string[]): DynamicRow {
     const low = stock.price * 0.88;
     const high = stock.price * 1.1;
 
-    const newRow: DynamicRow = {
-      id: stock.ticker.toLowerCase(),
+    return {
+      id: `${stock.ticker.toLowerCase()}_${Date.now()}`,
       values: {
         company_name: stock.name,
         symbol: stock.ticker,
@@ -103,7 +186,7 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
         sector: stock.sector,
       },
       meta: {
-        list_ids: activeListId === "all" ? [] : [activeListId],
+        list_ids: listIds,
         draggable: true,
         logo: {
           type: "initials",
@@ -116,10 +199,19 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
         expansion_key: "company_snapshot",
       },
     };
+  }
 
-    setRows((prev) => [newRow, ...prev]);
-    setActionModalMode(null);
-    toast.success(`Added ${stock.ticker} to your watchlist`);
+  function handleSort(key: string) {
+    if (sortKey === key) {
+      if (sortDir === "asc") setSortDir("desc");
+      else if (sortDir === "desc") {
+        setSortKey(null);
+        setSortDir(null);
+      }
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
   }
 
   return (
@@ -176,14 +268,14 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
           ) : null}
         </section>
 
-        {watchlist?.tabs?.length ? (
+        {tabs?.length ? (
           <WatchlistTabs
-            tabs={watchlist.tabs.map((tab) =>
+            tabs={tabs.map((tab) =>
               tab.id === "all" ? { ...tab, count: rows.length } : tab
             )}
             activeListId={activeListId}
             onChange={setActiveListId}
-            allowNewList={watchlist.allow_new_list}
+            allowNewList={watchlist?.allow_new_list}
             onCreateList={() => setActionModalMode("create")}
           />
         ) : null}
@@ -192,13 +284,19 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
           title={activeListId === "all" ? "All stocks" : activeTabLabel}
           rows={visibleRows}
           columns={columns}
+          lists={tabs}
           allowExport={watchlist?.allow_export}
           allowAddStock={watchlist?.allow_add_stock}
           allowDragReorder={watchlist?.allow_drag_reorder}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={handleSort}
           onAddStock={() => setActionModalMode("add")}
           onReset={() => {
             setQuery("");
             setActiveListId("all");
+            setSortKey(null);
+            setSortDir(null);
             toast.success("Watchlist view reset");
           }}
           onRowsReorder={(nextVisibleRows) => {
@@ -223,9 +321,11 @@ export function WatchlistViewRenderer({ view }: { view: DynamicView }) {
         <WatchlistActionModal
           mode={actionModalMode}
           onClose={() => setActionModalMode(null)}
+          lists={tabs}
+          presets={watchlist?.presets ?? []}
           universe={MOCK_UNIVERSE}
           trackedTickers={rows.map((row) => String(row.values.symbol))}
-          onAdd={addStock}
+          onFinish={handleActionModalFinish}
           initialWatchlistId={activeListId === "all" ? undefined : activeListId}
         />
       ) : null}

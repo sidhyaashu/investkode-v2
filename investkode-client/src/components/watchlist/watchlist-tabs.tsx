@@ -1,16 +1,9 @@
 "use client";
 
-import type { WatchlistTab } from "@/components/dynamic-view/types";
-import { cn } from "@/lib/utils";
 import { Plus, Star } from "@phosphor-icons/react";
-
-const toneDotClass: Record<string, string> = {
-  blue: "bg-[#2B6BFF]",
-  green: "bg-[#10A37F]",
-  yellow: "bg-[#E29A2B]",
-  red: "bg-[#E2557A]",
-  neutral: "bg-[var(--ik-ink-3)]",
-};
+import type { WatchlistTab } from "@/components/dynamic-view/types";
+import { watchlistTypeStyle } from "./watchlist-style-registry";
+import { cn } from "@/lib/utils";
 
 export function WatchlistTabs({
   tabs,
@@ -30,6 +23,7 @@ export function WatchlistTabs({
       <div className="flex flex-1 gap-[3px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((tab) => {
           const active = tab.id === activeListId;
+          const style = watchlistTypeStyle[tab.type] ?? watchlistTypeStyle.custom;
 
           return (
             <button
@@ -40,13 +34,13 @@ export function WatchlistTabs({
                 "inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[9px] border border-transparent px-[13px] py-2 font-sans text-[13px] font-medium tracking-[-0.005em] text-[var(--ik-ink-2)] transition",
                 "hover:bg-white/65 hover:text-[var(--ik-ink)] dark:hover:bg-white/[0.05] dark:hover:text-white",
                 active &&
-                  "border-[rgba(43,107,255,0.24)] bg-[linear-gradient(135deg,rgba(43,107,255,0.14),rgba(92,141,255,0.08))] font-semibold text-[var(--ik-accent-deep)] shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_2px_8px_-4px_rgba(43,107,255,0.3)] dark:border-white/20 dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.10),rgba(255,255,255,0.04))] dark:text-white"
+                  "border-[rgba(43,107,255,0.24)] bg-[linear-gradient(135deg,rgba(43,107,255,0.14),rgba(92,141,255,0.08))] font-semibold text-[var(--ik-accent-deep)] dark:border-white/20 dark:bg-white/[0.08] dark:text-white"
               )}
             >
-              {tab.id === "all" ? (
+              {tab.type === "all" ? (
                 <Star size={13} />
               ) : (
-                <span className={cn("inline-block size-2 rounded-[2px]", toneDotClass[tab.tone ?? "neutral"])} />
+                <span className={cn("inline-block size-2 rounded-[2px]", style.dotClass)} />
               )}
 
               {tab.label}

@@ -1,4 +1,4 @@
-import type { DynamicColumn, DynamicRow } from "../types";
+import type { DynamicColumn, DynamicRow, WatchlistTab } from "../types";
 import { formatValue } from "./formatter-registry";
 import { toneClass } from "./tone-registry";
 import { cn } from "@/lib/utils";
@@ -8,13 +8,14 @@ import { WatchlistRowActions } from "@/components/watchlist/watchlist-row-action
 type CellProps = {
   column: DynamicColumn;
   row: DynamicRow;
+  lists?: WatchlistTab[];
 };
 
 function getValue(row: DynamicRow, key: string) {
   return row.values[key];
 }
 
-export function RenderCell({ column, row }: CellProps) {
+export function RenderCell({ column, row, lists = [] }: CellProps) {
   const value = getValue(row, column.key);
 
   switch (column.renderer) {
@@ -24,15 +25,15 @@ export function RenderCell({ column, row }: CellProps) {
       const exchange = row.values.exchange ?? "NSE";
 
       return (
-        <div className="flex min-w-[220px] items-center gap-2.5">
+        <div className="flex min-w-[220px] items-center gap-3">
           <CompanyLogo row={row} />
 
           <div className="min-w-0">
-            <div className="truncate font-sans text-[13px] font-semibold text-[var(--ik-ink)]">
+            <div className="truncate font-sans text-[14px] font-bold text-[var(--ik-ink)]">
               {String(company ?? "—")}
             </div>
-            <div className="font-mono text-[10.5px] text-[var(--ik-ink-3)]">
-              {String(symbol ?? "—")} · {String(exchange)}
+            <div className="mt-0.5 font-mono text-[10.5px] font-medium tracking-wide text-[var(--ik-ink-3)]">
+              {String(symbol ?? "—")} <span className="mx-1 text-[var(--ik-rule)]">·</span> {String(exchange)}
             </div>
           </div>
         </div>
@@ -67,16 +68,21 @@ export function RenderCell({ column, row }: CellProps) {
 
       return (
         <div className="min-w-[150px]">
-          <div className="h-1.5 rounded-full bg-[var(--ik-rule)]">
+          <div className="relative h-1.5 rounded-full bg-[var(--ik-rule)]">
             <div
-              className="relative h-1.5 rounded-full bg-[linear-gradient(90deg,var(--ik-accent),var(--ik-good))]"
+              className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,var(--ik-accent),var(--ik-good))]"
               style={{ width: `${pct}%` }}
             />
+            {/* Knob/Handle */}
+            <div
+              className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-md border-[2.5px] border-white bg-[#5B72A0] shadow-[0_2px_4px_rgba(0,0,0,0.2)] dark:border-[#1A1A1D]"
+              style={{ left: `${pct}%` }}
+            />
           </div>
-          <div className="mt-1 flex justify-between font-mono text-[10px] text-[var(--ik-ink-3)]">
-            <span>₹{Number.isFinite(low) ? low.toFixed(0) : "—"}</span>
-            <span>{pct.toFixed(0)}%</span>
-            <span>₹{Number.isFinite(high) ? high.toFixed(0) : "—"}</span>
+          <div className="mt-2.5 flex justify-between font-mono text-[9px] font-semibold tracking-wider text-[var(--ik-ink-3)]">
+            <span className="opacity-70">₹{Number.isFinite(low) ? low.toLocaleString() : "—"}</span>
+            <span className="text-[var(--ik-accent-deep)] dark:text-white">{pct.toFixed(0)}%</span>
+            <span className="opacity-70">₹{Number.isFinite(high) ? high.toLocaleString() : "—"}</span>
           </div>
         </div>
       );
@@ -97,7 +103,7 @@ export function RenderCell({ column, row }: CellProps) {
       );
 
     case "actions":
-      return <WatchlistRowActions row={row} />;
+      return <WatchlistRowActions row={row} lists={lists} />;
 
     case "text":
     default:
