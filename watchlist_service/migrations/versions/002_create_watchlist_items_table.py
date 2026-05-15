@@ -37,25 +37,15 @@ def upgrade() -> None:
 
         sa.Column("position", sa.Integer(), nullable=True),
 
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.func.now(),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.func.now(),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
 
         sa.PrimaryKeyConstraint("id"),
 
         sa.ForeignKeyConstraint(
             ["watchlist_id"],
-            ["watchlists.id"],
+            ["app.watchlists.id"],
             ondelete="CASCADE",
         ),
 
@@ -64,6 +54,7 @@ def upgrade() -> None:
             "fincode",
             name="uq_watchlist_items_watchlist_id_fincode",
         ),
+        schema="app",
     )
 
     op.create_index(
@@ -71,6 +62,7 @@ def upgrade() -> None:
         "watchlist_items",
         ["watchlist_id"],
         unique=False,
+        schema="app",
     )
 
     op.create_index(
@@ -78,6 +70,7 @@ def upgrade() -> None:
         "watchlist_items",
         ["user_id"],
         unique=False,
+        schema="app",
     )
 
     op.create_index(
@@ -85,6 +78,7 @@ def upgrade() -> None:
         "watchlist_items",
         ["user_id", "watchlist_id"],
         unique=False,
+        schema="app",
     )
 
     op.create_index(
@@ -92,6 +86,7 @@ def upgrade() -> None:
         "watchlist_items",
         ["fincode"],
         unique=False,
+        schema="app",
     )
 
     op.create_index(
@@ -99,13 +94,14 @@ def upgrade() -> None:
         "watchlist_items",
         ["exchange", "symbol", "series"],
         unique=False,
+        schema="app",
     )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_watchlist_items_exchange_symbol_series", table_name="watchlist_items")
-    op.drop_index("ix_watchlist_items_fincode", table_name="watchlist_items")
-    op.drop_index("ix_watchlist_items_user_watchlist", table_name="watchlist_items")
-    op.drop_index("ix_watchlist_items_user_id", table_name="watchlist_items")
-    op.drop_index("ix_watchlist_items_watchlist_id", table_name="watchlist_items")
-    op.drop_table("watchlist_items")
+    op.drop_index("ix_watchlist_items_exchange_symbol_series", table_name="watchlist_items", schema="app")
+    op.drop_index("ix_watchlist_items_fincode", table_name="watchlist_items", schema="app")
+    op.drop_index("ix_watchlist_items_user_watchlist", table_name="watchlist_items", schema="app")
+    op.drop_index("ix_watchlist_items_user_id", table_name="watchlist_items", schema="app")
+    op.drop_index("ix_watchlist_items_watchlist_id", table_name="watchlist_items", schema="app")
+    op.drop_table("watchlist_items", schema="app")

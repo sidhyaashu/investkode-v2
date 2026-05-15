@@ -1,7 +1,7 @@
 """create watchlists table
 
 Revision ID: 001_create_watchlists_table
-Revises: 
+Revises:
 Create Date: 2026-05-15
 
 """
@@ -18,6 +18,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    op.execute("CREATE SCHEMA IF NOT EXISTS app")
+
     op.create_table(
         "watchlists",
         sa.Column("id", sa.String(), nullable=False),
@@ -31,6 +33,7 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", "name", name="uq_watchlists_user_id_name"),
+        schema="app",
     )
 
     op.create_index(
@@ -38,6 +41,7 @@ def upgrade() -> None:
         "watchlists",
         ["user_id"],
         unique=False,
+        schema="app",
     )
 
     op.create_index(
@@ -45,10 +49,11 @@ def upgrade() -> None:
         "watchlists",
         ["user_id", "deleted_at"],
         unique=False,
+        schema="app",
     )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_watchlists_user_id_deleted_at", table_name="watchlists")
-    op.drop_index("ix_watchlists_user_id", table_name="watchlists")
-    op.drop_table("watchlists")
+    op.drop_index("ix_watchlists_user_id_deleted_at", table_name="watchlists", schema="app")
+    op.drop_index("ix_watchlists_user_id", table_name="watchlists", schema="app")
+    op.drop_table("watchlists", schema="app")

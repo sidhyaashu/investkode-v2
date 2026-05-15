@@ -49,6 +49,7 @@ class Watchlist(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_watchlists_user_id_name"),
         Index("ix_watchlists_user_id_deleted_at", "user_id", "deleted_at"),
+        {"schema": "app"},
     )
 
 
@@ -59,24 +60,21 @@ class WatchlistItem(Base):
 
     watchlist_id = Column(
         String,
-        ForeignKey("watchlists.id", ondelete="CASCADE"),
+        ForeignKey("app.watchlists.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
+
     user_id = Column(String, nullable=False, index=True)
 
-    # Company identity from provider.
     fincode = Column(Integer, nullable=False)
-
-    # Snapshot fields for UI/search/display.
     company_name = Column(String(255), nullable=False)
 
-    # Selected listing after NSE-first/BSE-fallback logic.
-    exchange = Column(String(10), nullable=False)       # NSE / BSE
-    symbol = Column(String(50), nullable=True)          # NSE symbol; nullable for BSE-only
-    series = Column(String(10), nullable=True)          # NSE series; nullable for BSE-only
-    bse_scripcode = Column(String(20), nullable=True)   # useful when only BSE exists
-    display_symbol = Column(String(80), nullable=True)  # ICICIBANK or BSE:532174
+    exchange = Column(String(10), nullable=False)
+    symbol = Column(String(50), nullable=True)
+    series = Column(String(10), nullable=True)
+    bse_scripcode = Column(String(20), nullable=True)
+    display_symbol = Column(String(80), nullable=True)
 
     position = Column(Integer, nullable=True)
 
@@ -92,7 +90,6 @@ class WatchlistItem(Base):
     watchlist = relationship("Watchlist", back_populates="items")
 
     __table_args__ = (
-        # One company only once in one watchlist.
         UniqueConstraint(
             "watchlist_id",
             "fincode",
@@ -101,4 +98,5 @@ class WatchlistItem(Base):
         Index("ix_watchlist_items_user_watchlist", "user_id", "watchlist_id"),
         Index("ix_watchlist_items_fincode", "fincode"),
         Index("ix_watchlist_items_exchange_symbol_series", "exchange", "symbol", "series"),
+        {"schema": "app"},
     )
