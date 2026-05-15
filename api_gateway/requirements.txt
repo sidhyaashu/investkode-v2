@@ -10,3 +10,6 @@ redis[asyncio]==5.2.0
 gunicorn==23.0.0
 
 python-multipart==0.0.12
+
+# 🌟 UPGRADE: Prometheus for Observability
+prometheus-fastapi-instrumentator==7.0.0

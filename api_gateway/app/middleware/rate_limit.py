@@ -4,6 +4,7 @@ from starlette.responses import JSONResponse
 
 from app.repository.rate_limit_repo import increment, get_ttl
 from app.repository.rate_limit_fallback import local_limiter
+from app.repository.redis import redis_client
 
 
 TIER_LIMITS = {
@@ -24,12 +25,21 @@ AI_TIER_LIMITS = {
 class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
-
         path = request.url.path
 
         # get IP (proxy-safe)
         forwarded = request.headers.get("x-forwarded-for")
         ip = forwarded.split(",")[0] if forwarded else request.client.host
+
+        # 🌟 UPGRADE: Fail2Ban Check. Drop request instantly if IP is blacklisted.
+        try:
+            if await redis_client.exists(f"blacklist:ip:{ip}"):
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Your IP has been temporarily banned for spamming."}
+                )
+        except Exception:
+            pass
 
         user_id = getattr(request.state, "user_id", None)
         tier = getattr(request.state, "tier", "none")
@@ -52,6 +62,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
             if count > limit:
                 ttl = await get_ttl(key)
+
+                # 🌟 UPGRADE: Record a violation. If > 5 violations, ban IP for 24h.
+                violation_key = f"violations:ip:{ip}"
+                violations = await redis_client.incr(violation_key)
+                if int(violations) == 1:
+                    await redis_client.expire(violation_key, 60)  # Count violations per minute
+
+                if int(violations) > 5:
+                    await redis_client.set(f"blacklist:ip:{ip}", "banned", ex=86400)  # 24 Hour ban
 
                 return JSONResponse(
                     status_code=429,

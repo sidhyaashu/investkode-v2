@@ -1,20 +1,19 @@
 import httpx
+import json
 from fastapi import Request, HTTPException, Response
-from app.proxy.circuit_breaker import CircuitBreaker
+from app.proxy.circuit_breaker import DistributedCircuitBreaker
 from app.proxy.retry import retry
 from app.core.http_client import http_client
+from app.repository.redis import redis_client
 
-# Global state for breakers
+
 _breakers = {}
 
 
 def get_breaker(service_name: str):
-    """
-    🛡️ PER-SERVICE Circuit Breaker.
-    Prevents a single failing service from cascading and killing the whole gateway.
-    """
+    """🛡️ Distributed Circuit Breaker factory."""
     if service_name not in _breakers:
-        _breakers[service_name] = CircuitBreaker(service_name)
+        _breakers[service_name] = DistributedCircuitBreaker(service_name)
     return _breakers[service_name]
 
 
@@ -56,9 +55,36 @@ def build_headers(request: Request):
     return headers
 
 
-async def proxy_request(request: Request, target_url: str, path: str, service_name: str = "default", timeout: float = 10.0):
+async def proxy_request(request: Request, route_config: dict, path: str):
+    """
+    🚀 ENTERPRISE PROXY ENGINE.
+    Handles caching, retries, and distributed circuit breaking.
+    """
+    target_url = route_config["target"]
+    service_name = route_config.get("service_name", "default")
+    timeout = route_config.get("timeout", 10.0)
+    cache_ttl = route_config.get("cache_ttl", 0)
+
+    # 🌟 UPGRADE: EDGE CACHING
+    # Generate a unique cache key based on path, query, and user_id (privacy-safe)
+    user_id = getattr(request.state, "user_id", "anon")
+    cache_key = f"gw_cache:{path}:{request.url.query}:{user_id}"
+
+    if request.method == "GET" and cache_ttl > 0:
+        try:
+            cached_resp = await redis_client.get(cache_key)
+            if cached_resp:
+                data = json.loads(cached_resp)
+                return Response(
+                    content=data["body"].encode(),
+                    status_code=data["status"],
+                    headers=data["headers"]
+                )
+        except Exception:
+            pass  # Ignore Redis cache read errors
+
     body = await request.body()
-    
+
     async def _do_proxy():
         headers = build_headers(request)
         url = f"{target_url}{path}"
@@ -75,21 +101,32 @@ async def proxy_request(request: Request, target_url: str, path: str, service_na
 
     breaker = get_breaker(service_name)
 
-    try:
-        if not breaker.allow():
-            raise HTTPException(status_code=503, detail=f"Service {service_name} unavailable (Circuit Open)")
+    if not await breaker.allow():
+        raise HTTPException(status_code=503, detail=f"Service {service_name} unavailable (Circuit Open)")
 
+    try:
         # 🛡️ Pass request method to retry logic
         upstream_resp = await retry(_do_proxy, method=request.method)
-        breaker.success()
+        await breaker.success()
 
         # 🛡️ Normalize Upstream Errors
-        # Don't leak raw service internal errors; map them to standard gateway errors
         if upstream_resp.status_code >= 400:
             raise HTTPException(
                 status_code=upstream_resp.status_code,
                 detail=upstream_resp.text
             )
+
+        # 🌟 UPGRADE: Save to Edge Cache if successful and TTL > 0
+        if request.method == "GET" and cache_ttl > 0 and upstream_resp.status_code == 200:
+            try:
+                cache_data = {
+                    "body": upstream_resp.text,
+                    "status": upstream_resp.status_code,
+                    "headers": {k: v for k, v in upstream_resp.headers.items() if k.lower() in SAFE_RESPONSE_HEADERS}
+                }
+                await redis_client.set(cache_key, json.dumps(cache_data), ex=cache_ttl)
+            except Exception:
+                pass
 
         response = Response(
             content=upstream_resp.content,
@@ -99,17 +136,16 @@ async def proxy_request(request: Request, target_url: str, path: str, service_na
 
         for k, v in upstream_resp.headers.items():
             k_lower = k.lower()
-            # Only append headers that aren't already handled by the Response constructor
             if k_lower in SAFE_RESPONSE_HEADERS and k_lower not in ["content-type", "content-length"]:
                 response.headers.append(k, v)
 
         return response
 
     except httpx.TimeoutException:
-        breaker.failure()
+        await breaker.failure()
         raise HTTPException(status_code=504, detail=f"Upstream service {service_name} timeout")
     except HTTPException:
         raise
     except Exception as e:
-        breaker.failure()
+        await breaker.failure()
         raise HTTPException(status_code=502, detail=f"Upstream service {service_name} error or unreachable")

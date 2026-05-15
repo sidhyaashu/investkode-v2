@@ -1,47 +1,62 @@
 import time
+from app.repository.redis import redis_client
 
-breaker_state = {}
+# Local fallback in case Redis crashes
+_local_state = {}
 
 
-class CircuitBreaker:
+class DistributedCircuitBreaker:
+    """
+    🛡️ Distributed Circuit Breaker.
+    Uses Redis for state sharing with local memory fallback.
+    """
 
-    def __init__(self, key, failure_threshold=5, cooldown=30):
-        self.key = key
-        self.failure_threshold = failure_threshold
+    def __init__(self, key: str, failure_threshold=5, cooldown=30):
+        self.key = f"circuit_breaker:{key}"
+        self.threshold = failure_threshold
         self.cooldown = cooldown
 
-        if key not in breaker_state:
-            breaker_state[key] = {
-                "failures": 0,
-                "state": "CLOSED",
-                "last_failure": 0
-            }
+    async def allow(self) -> bool:
+        """Checks if the circuit is open."""
+        try:
+            # 🌟 UPGRADE: Check Redis for "OPEN" state
+            is_open = await redis_client.get(f"{self.key}:open")
+            if is_open:
+                return False
+            return True
+        except Exception:
+            # Fallback to local memory if Redis is down
+            state = _local_state.get(self.key, {"failures": 0, "open_until": 0})
+            if time.time() < state["open_until"]:
+                return False
+            return True
 
-    def allow(self):
-        state = breaker_state[self.key]
+    async def success(self):
+        """Resets the circuit on successful request."""
+        try:
+            await redis_client.delete(f"{self.key}:failures")
+            await redis_client.delete(f"{self.key}:open")
+        except Exception:
+            _local_state[self.key] = {"failures": 0, "open_until": 0}
 
-        if state["state"] == "OPEN":
-            if time.time() - state["last_failure"] > self.cooldown:
-                state["state"] = "HALF_OPEN"
-                return True
-            return False
+    async def failure(self):
+        """Increments failure count and trips the circuit if threshold is reached."""
+        try:
+            failures = await redis_client.incr(f"{self.key}:failures")
+            if int(failures) == 1:
+                await redis_client.expire(f"{self.key}:failures", self.cooldown)
 
-        return True
-
-    def success(self):
-        breaker_state[self.key] = {
-            "failures": 0,
-            "state": "CLOSED",
-            "last_failure": 0
-        }
-
-    def failure(self):
-        state = breaker_state[self.key]
-        state["failures"] += 1
-        state["last_failure"] = time.time()
-
-        if state["failures"] >= self.failure_threshold:
-            state["state"] = "OPEN"
+            if int(failures) >= self.threshold:
+                # Trip the breaker for the specified cooldown period
+                await redis_client.set(f"{self.key}:open", "true", ex=self.cooldown)
+        except Exception:
+            # Local fallback logic
+            state = _local_state.get(self.key, {"failures": 0, "open_until": 0})
+            state["failures"] += 1
+            if state["failures"] >= self.threshold:
+                state["open_until"] = time.time() + self.cooldown
+            _local_state[self.key] = state
 
 
-breaker = CircuitBreaker("global")
+# Global breaker instance
+breaker = DistributedCircuitBreaker("global")
