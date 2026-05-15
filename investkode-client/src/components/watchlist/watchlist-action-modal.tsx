@@ -37,6 +37,7 @@ interface WatchlistActionModalProps {
 type InstrumentResult = {
   id: string;
   instrument_id?: string;
+  fincode?: string | number | null;
   symbol: string;
   name: string;
   exchange?: string;
@@ -127,15 +128,12 @@ export function WatchlistActionModal({
    * - used when modal search is empty
    * - shows suggested/popular instruments from backend
    */
-  const {
-    data: searchResults = [],
-    isLoading: isSearching,
-  } = useInstrumentSearch(debouncedSearch);
 
-  const {
-    data: popularInstruments = [],
-    isLoading: isLoadingPopular,
-  } = usePopularInstruments();
+  const { data: searchResults = [], isLoading: isSearching } =
+    useInstrumentSearch(debouncedSearch);
+
+  const { data: popularInstruments = [], isLoading: isLoadingPopular } =
+    usePopularInstruments();
 
   const searchableInstruments = searchQuery.trim()
     ? searchResults
@@ -217,9 +215,7 @@ export function WatchlistActionModal({
         for (const instrument of selectedInstruments) {
           await addItemMutation.mutateAsync({
             watchlistId: newWatchlist.id,
-            instrument_id: instrument.id,
-            symbol: instrument.symbol,
-            exchange: instrument.exchange || "NSE",
+            fincode: Number(instrument.fincode ?? instrument.id),
           });
         }
 
@@ -232,9 +228,7 @@ export function WatchlistActionModal({
         for (const instrument of selectedInstruments) {
           await addItemMutation.mutateAsync({
             watchlistId: targetWatchlistId,
-            instrument_id: instrument.id,
-            symbol: instrument.symbol,
-            exchange: instrument.exchange || "NSE",
+            fincode: Number(instrument.fincode ?? instrument.id),
           });
         }
 

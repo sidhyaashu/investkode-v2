@@ -349,7 +349,7 @@ async def google_callback(
     user, access_token, refresh_token = await google_login(db, id_token, request)
 
     # 4. Redirect to Dashboard with cookies
-    redirect_res = RedirectResponse(url=f"{settings.CLIENT_URL}/dashboard")
+    redirect_res = RedirectResponse(url=f"{settings.CLIENT_URL}/watchlist")
     
     redirect_res.set_cookie(
         key="access_token",

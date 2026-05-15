@@ -8,13 +8,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { DynamicView } from "../types";
+import type { DynamicView, SortDirection } from "../types";
 import { RenderCell } from "../registry/cell-renderer-registry";
 import { cn } from "@/lib/utils";
 import { MagnifyingGlassIcon, StarIcon } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 
-export function DataGridRenderer({ view }: { view: DynamicView }) {
+export function DataGridRenderer({
+  view,
+  sortKey,
+  sortDir,
+  onSortChange,
+}: {
+  view: DynamicView;
+  sortKey?: string;
+  sortDir?: SortDirection;
+  onSortChange?: (key: string) => void;
+}) {
   const [query, setQuery] = useState("");
 
   const columns = view.columns ?? [];

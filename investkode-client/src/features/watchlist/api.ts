@@ -40,9 +40,7 @@ export type CreateWatchlistPayload = {
 
 export type AddWatchlistItemPayload = {
   watchlistId: string;
-  instrument_id?: string | null;
-  symbol: string;
-  exchange?: string;
+  fincode: number;
 };
 
 export async function fetchWatchlists() {

@@ -30,6 +30,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
+        if path == "/api/v1/health":
+            return await call_next(request)
 
         # get IP (proxy-safe)
         forwarded = request.headers.get("x-forwarded-for")

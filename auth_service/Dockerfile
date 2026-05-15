@@ -42,10 +42,5 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
   CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
 # Start server
-CMD ["gunicorn", "app.main:app", \
-     "--workers", "4", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--bind", "0.0.0.0:8000", \
-     "--timeout", "30", \
-     "--keep-alive", "5"]
+CMD ["sh", "-c", "python -m app.prestart && gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 30 --keep-alive 5"]
 

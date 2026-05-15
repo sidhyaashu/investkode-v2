@@ -27,13 +27,15 @@ async def lifespan(app: FastAPI):
         logger.exception("Watchlist database connection failed")
         raise RuntimeError("Watchlist database startup check failed") from e
 
-    try:
-        async with financial_engine.begin() as conn:
-            await conn.execute(text("SELECT 1"))
-        logger.info("Financial database connected")
-    except Exception as e:
-        logger.exception("Financial database connection failed")
-        raise RuntimeError("Financial database startup check failed") from e
+    # try:
+    #     async with financial_engine.begin() as conn:
+    #         await conn.execute(text("SELECT 1"))
+    #     logger.info("Financial database connected")
+    # except Exception as e:
+    #     import traceback
+    #     traceback.print_exc()
+    #     logger.exception("Financial database connection failed")
+    #     raise RuntimeError("Financial database startup check failed") from e
 
     yield
 

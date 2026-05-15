@@ -10,6 +10,8 @@ export type ViewType =
   | "entity_list"
   | "breakdown_view";
 
+export type SortDirection = "asc" | "desc" | null;
+
 export type Tone =
   | "positive"
   | "negative"

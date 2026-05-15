@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/features/auth/hooks";
 import { useTheme } from "next-themes";
 import {
   ArrowRightIcon,
@@ -21,49 +22,30 @@ export function AuthPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [state, setState] = useState<AuthState>("initial");
+  const userQuery = useUser();
 
   const isDark = theme === "dark";
 
-  async function handleGoogleAuth() {
-    setState("loading");
+  useEffect(() => {
+    if (userQuery.data) {
+      router.replace("/watchlist");
+    }
+  }, [userQuery.data, router]);
 
-    /*
-      Production option 1:
-      Redirect to backend OAuth URL if you expose:
-      window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/google/login`;
-
-      Production option 2:
-      Use Google Identity Services in frontend, get id_token,
-      then POST to /api/v1/auth/google.
-
-      For now this keeps your UI working and ready.
-    */
-
-    setTimeout(() => {
-      setState("success");
-    }, 8000);
+  if (userQuery.isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--ik-field-bg)]">
+        <div className="size-8 animate-spin rounded-full border-4 border-[var(--ik-rule)] border-t-[var(--ik-accent-deep)]" />
+      </div>
+    );
   }
 
-
-//   async function submitGoogleToken(idToken: string) {
-//     const res = await fetch(
-//         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/google`,
-//         {
-//         method: "POST",
-//         headers: {
-//             "Content-Type": "application/json",
-//         },
-//         credentials: "include",
-//         body: JSON.stringify({ id_token: idToken }),
-//         }
-//     );
-
-//     if (!res.ok) {
-//         throw new Error("Google login failed");
-//     }
-
-//     router.push("/watchlist");
-//     }
+  async function handleGoogleAuth() {
+    setState("loading");
+    // 🔗 Step 1: Redirect to Google OAuth2 consent screen via API Gateway
+    // Using replace to avoid history clutter
+    window.location.replace("/api/v1/auth/google/login");
+  }
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-6 text-[var(--ik-ink)]">

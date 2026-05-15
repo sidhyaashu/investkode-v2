@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState , useEffect} from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
 import type { SortDirection } from "@/components/dynamic-view/types";
 import { DynamicViewRenderer } from "@/components/dynamic-view/dynamic-view-renderer";
 import { ViewPagination } from "@/components/dynamic-view/pagination/view-pagination";
@@ -11,11 +13,14 @@ import {
 import { useWatchlistView } from "@/features/watchlist/hooks";
 
 export function WatchlistPageClient() {
+  const router = useRouter();
   const [activeTabId, setActiveTabId] = useState("all");
   const [tableMode, setTableMode] = useState<"client" | "server">("client");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<Record<string, string | undefined>>({});
+  const [filters, setFilters] = useState<Record<string, string | undefined>>(
+    {}
+  );
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sortKey, setSortKey] = useState("position");
@@ -29,8 +34,8 @@ export function WatchlistPageClient() {
     mode: tableMode,
 
     /**
-     * These only matter in server mode.
-     * api.ts will not send them in client mode.
+     * These are sent to backend only in server mode.
+     * api.ts must not send them in client mode.
      */
     page,
     pageSize,
@@ -42,17 +47,18 @@ export function WatchlistPageClient() {
 
   const rawResponse = viewQuery.data;
   const rawRows = rawResponse?.view.data?.rows ?? [];
+
   const backendTotalItems =
     rawResponse?.view.pagination?.total_items ?? rawRows.length;
 
-  /**
-   * Auto-switch table mode based on total rows.
-   */
-  const shouldUseClientMode = backendTotalItems <= CLIENT_TABLE_ROW_LIMIT;
+  useEffect(() => {
+    if (!rawResponse) return;
 
-  if (rawResponse && tableMode !== (shouldUseClientMode ? "client" : "server")) {
-    setTableMode(shouldUseClientMode ? "client" : "server");
-  }
+    const nextMode =
+      backendTotalItems <= CLIENT_TABLE_ROW_LIMIT ? "client" : "server";
+
+    setTableMode((prev) => (prev === nextMode ? prev : nextMode));
+  }, [rawResponse, backendTotalItems]);
 
   const processedResponse = useMemo(() => {
     if (!rawResponse) return null;
@@ -123,16 +129,27 @@ export function WatchlistPageClient() {
   }
 
   if (viewQuery.error || !processedResponse?.success) {
+    const isUnauthorized =
+      viewQuery.error instanceof Error &&
+      viewQuery.error.message === "Unauthorized";
+
+    if (isUnauthorized) {
+      router.replace("/auth");
+      return null;
+    }
+
     return (
       <div className="rounded-[18px] border border-[var(--ik-rule)] bg-white/60 p-6 text-[var(--ik-ink)] dark:bg-white/5">
         <div className="font-sans text-base font-semibold">
           Failed to load watchlist
         </div>
+
         <p className="mt-1 text-sm text-[var(--ik-ink-3)]">
           {viewQuery.error instanceof Error
             ? viewQuery.error.message
             : "The server-driven watchlist view could not be loaded."}
         </p>
+
         <button
           type="button"
           onClick={() => viewQuery.refetch()}
@@ -145,15 +162,6 @@ export function WatchlistPageClient() {
   }
 
   const pagination = processedResponse.view.pagination;
-
-  useEffect(() => {
-  if (!rawResponse) return;
-
-  const nextMode =
-    backendTotalItems <= CLIENT_TABLE_ROW_LIMIT ? "client" : "server";
-
-  setTableMode(nextMode);
-}, [rawResponse, backendTotalItems]);
 
   return (
     <div className="space-y-4">
@@ -170,8 +178,8 @@ export function WatchlistPageClient() {
         sortDir={sortDir}
         onSortChange={handleSortChange}
         filters={filters}
-        onFiltersChange={(next) => {
-          setFilters(next);
+        onFiltersChange={(nextFilters) => {
+          setFilters(nextFilters);
           setPage(1);
         }}
       />

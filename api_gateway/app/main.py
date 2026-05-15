@@ -61,7 +61,7 @@ async def security_headers(request, call_next):
 # 🔒 Restricted CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://investkode.net"],
+    allow_origins=["http://localhost:3000", "http://localhost", "https://investkode.net"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],

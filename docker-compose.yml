@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:7-alpine
@@ -21,6 +19,8 @@ services:
       POSTGRES_DB: ${AUTH_DB_NAME}
     ports:
       - "5432:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -31,6 +31,7 @@ services:
     build:
       context: ./auth_service
     container_name: investkode_auth_service
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -40,6 +41,11 @@ services:
         condition: service_healthy
       auth_db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "8001:8000"
 
@@ -47,6 +53,7 @@ services:
     build:
       context: ./api_gateway
     container_name: investkode_api_gateway
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -56,9 +63,14 @@ services:
       redis:
         condition: service_healthy
       auth_service:
-        condition: service_started
+        condition: service_healthy
       watchlist_service:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "8000:8000"
 
@@ -66,6 +78,7 @@ services:
     build:
       context: ./watchlist_service
     container_name: investkode_watchlist_service
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -75,5 +88,45 @@ services:
     depends_on:
       auth_db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "8002:8000"
+
+  investkode-client:
+    build:
+      context: ./investkode-client
+    container_name: investkode_client
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      api_gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: investkode_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      investkode-client:
+        condition: service_healthy
+      api_gateway:
+        condition: service_healthy
+
+volumes:
+  auth_db_data:
+

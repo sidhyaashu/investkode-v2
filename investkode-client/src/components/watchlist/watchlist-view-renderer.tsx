@@ -35,9 +35,10 @@ export function WatchlistViewRenderer({
   const [actionModalMode, setActionModalMode] =
     useState<"add" | "create" | null>(null);
 
-  const watchlist = view.watchlist;
-  const columns = view.columns ?? [];
+
   const rows = view.data?.rows ?? [];
+  const columns = view.columns ?? [];
+  const watchlist = view.watchlist;
 
   const currentListId =
     activeListId ?? watchlist?.active_list_id ?? "all";
@@ -109,10 +110,7 @@ export function WatchlistViewRenderer({
           onAddStock={() => setActionModalMode("add")}
           sortKey={sortKey}
           sortDir={sortDir}
-          onSortChange={onSortChange}
-          onRowsReorder={() => {
-            // TODO: call reorder mutation
-          }}
+          onSort={onSortChange}
         />
       </div>
 

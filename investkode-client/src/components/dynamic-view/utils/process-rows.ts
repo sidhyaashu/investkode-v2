@@ -1,4 +1,4 @@
-import type { DynamicRow } from "@/components/dynamic-view/types";
+import type { DynamicRow, SortDirection } from "@/components/dynamic-view/types";
 
 export const CLIENT_TABLE_ROW_LIMIT = 100;
 
@@ -15,7 +15,7 @@ export function processRows({
   search: string;
   filters: Record<string, string | undefined>;
   sortKey: string;
-  sortDir: "asc" | "desc";
+  sortDir: SortDirection;
   page: number;
   pageSize: number;
 }) {
@@ -39,7 +39,7 @@ export function processRows({
     });
   });
 
-  if (sortKey) {
+  if (sortKey && sortDir) {
     output.sort((a, b) => {
       const av = a.values[sortKey];
       const bv = b.values[sortKey];
