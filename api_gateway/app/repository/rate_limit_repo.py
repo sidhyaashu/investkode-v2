@@ -1,4 +1,4 @@
-from app.repository.redis import redis_client
+from app.core.redis import redis_client
 
 
 async def increment(key: str, ttl: int = 60):

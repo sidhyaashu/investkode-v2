@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, Request, HTTPException
 from fastapi.responses import JSONResponse
+from app.core.response import error_response
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware  # 🌟 UPGRADE
@@ -21,41 +22,28 @@ async def lifespan(app: FastAPI):
     yield
     await http_client.stop()
 
-app = FastAPI(title="InvestCode Gateway", lifespan=lifespan)
-
-# 🌟 UPGRADE: Expose /metrics for Prometheus/Grafana
-Instrumentator().instrument(app).expose(app)
+app = FastAPI(title="InvestKode Gateway", lifespan=lifespan)
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Standardizes error responses across the gateway."""
-    return JSONResponse(
+    return error_response(
+        code=f"HTTP_{exc.status_code}",
+        message=exc.detail,
         status_code=exc.status_code,
-        content={
-            "success": False,
-            "error": {
-                "code": f"HTTP_{exc.status_code}",
-                "message": exc.detail,
-                "request_id": getattr(request.state, "request_id", "unknown")
-            }
-        },
+        meta={"request_id": getattr(request.state, "request_id", "unknown")}
     )
 
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     """Catch-all for unhandled exceptions."""
-    return JSONResponse(
+    return error_response(
+        code="INTERNAL_SERVER_ERROR",
+        message="An unexpected error occurred. Please try again later.",
         status_code=500,
-        content={
-            "success": False,
-            "error": {
-                "code": "INTERNAL_SERVER_ERROR",
-                "message": "An unexpected error occurred. Please try again later.",
-                "request_id": getattr(request.state, "request_id", "unknown")
-            }
-        },
+        meta={"request_id": getattr(request.state, "request_id", "unknown")}
     )
 
 
@@ -93,3 +81,6 @@ app.add_middleware(RateLimitMiddleware)
 # Routes
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(proxy_router)  # Catch-all proxy
+
+# 🌟 UPGRADE: Expose /metrics for Prometheus/Grafana (Must be at the end)
+Instrumentator().instrument(app).expose(app)

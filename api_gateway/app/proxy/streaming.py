@@ -4,8 +4,10 @@ from starlette.responses import StreamingResponse
 from app.proxy.engine import build_headers
 from app.core.http_client import http_client
 
-
-async def stream_request(request: Request, target_url: str, path: str, service_name: str = "default", timeout: float = None):
+async def stream_request(request: Request, route_config: dict, path: str):
+    # Extract config details just like in proxy_request
+    target_url = route_config["target"]
+    
     # For streaming, we use a custom timeout to prevent infinite hangs
     stream_timeout = httpx.Timeout(timeout=None, read=60.0)
     
@@ -21,7 +23,6 @@ async def stream_request(request: Request, target_url: str, path: str, service_n
             content=request.stream(),
             timeout=stream_timeout
         ) as resp:
-
             async for chunk in resp.aiter_bytes():
                 # 🛡️ Disconnect Handling: Stop streaming if the client closes the connection
                 if await request.is_disconnected():

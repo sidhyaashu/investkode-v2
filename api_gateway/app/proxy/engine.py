@@ -4,7 +4,10 @@ from fastapi import Request, HTTPException, Response
 from app.proxy.circuit_breaker import DistributedCircuitBreaker
 from app.proxy.retry import retry
 from app.core.http_client import http_client
-from app.repository.redis import redis_client
+from app.core.redis import redis_client
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 _breakers = {}
@@ -80,8 +83,8 @@ async def proxy_request(request: Request, route_config: dict, path: str):
                     status_code=data["status"],
                     headers=data["headers"]
                 )
-        except Exception:
-            pass  # Ignore Redis cache read errors
+        except Exception as e:
+            logger.debug("Edge cache read failed: %s", e)
 
     body = await request.body()
 
@@ -125,8 +128,8 @@ async def proxy_request(request: Request, route_config: dict, path: str):
                     "headers": {k: v for k, v in upstream_resp.headers.items() if k.lower() in SAFE_RESPONSE_HEADERS}
                 }
                 await redis_client.set(cache_key, json.dumps(cache_data), ex=cache_ttl)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Edge cache write failed: %s", e)
 
         response = Response(
             content=upstream_resp.content,

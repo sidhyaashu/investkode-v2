@@ -1,5 +1,6 @@
 import time
-from app.repository.redis import redis_client
+from app.core.redis import redis_client
+from app.core.config import settings
 
 # Local fallback in case Redis crashes
 _local_state = {}
@@ -11,10 +12,10 @@ class DistributedCircuitBreaker:
     Uses Redis for state sharing with local memory fallback.
     """
 
-    def __init__(self, key: str, failure_threshold=5, cooldown=30):
-        self.key = f"circuit_breaker:{key}"
-        self.threshold = failure_threshold
-        self.cooldown = cooldown
+    def __init__(self, service_name: str, failure_threshold: int = None, cooldown: int = None):
+        self.key = f"circuit_breaker:{service_name}"
+        self.threshold = failure_threshold or settings.CIRCUIT_BREAKER_THRESHOLD
+        self.cooldown = cooldown or settings.CIRCUIT_BREAKER_COOLDOWN
 
     async def allow(self) -> bool:
         """Checks if the circuit is open."""

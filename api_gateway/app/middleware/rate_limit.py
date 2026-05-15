@@ -4,7 +4,11 @@ from starlette.responses import JSONResponse
 
 from app.repository.rate_limit_repo import increment, get_ttl
 from app.repository.rate_limit_fallback import local_limiter
-from app.repository.redis import redis_client
+from app.core.redis import redis_client
+from app.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 TIER_LIMITS = {
@@ -38,8 +42,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     status_code=403,
                     content={"detail": "Your IP has been temporarily banned for spamming."}
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Fail2Ban check failed: %s", e)
 
         user_id = getattr(request.state, "user_id", None)
         tier = getattr(request.state, "tier", "none")
@@ -63,14 +67,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if count > limit:
                 ttl = await get_ttl(key)
 
-                # 🌟 UPGRADE: Record a violation. If > 5 violations, ban IP for 24h.
+                # 🌟 UPGRADE: Record a violation. If > FAIL2BAN_VIOLATIONS_MAX, ban IP.
                 violation_key = f"violations:ip:{ip}"
                 violations = await redis_client.incr(violation_key)
                 if int(violations) == 1:
                     await redis_client.expire(violation_key, 60)  # Count violations per minute
 
-                if int(violations) > 5:
-                    await redis_client.set(f"blacklist:ip:{ip}", "banned", ex=86400)  # 24 Hour ban
+                if int(violations) > settings.FAIL2BAN_VIOLATIONS_MAX:
+                    await redis_client.set(f"blacklist:ip:{ip}", "banned", ex=settings.FAIL2BAN_BAN_DURATION)
 
                 return JSONResponse(
                     status_code=429,
@@ -78,7 +82,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     headers={"Retry-After": str(ttl)}
                 )
 
-        except Exception:
+        except Exception as e:
+            logger.warning("Redis rate limit failed, using local fallback. Error: %s", e)
             # 🔥 fallback to local limiter
             allowed = local_limiter.allow(key, limit=limit)
 

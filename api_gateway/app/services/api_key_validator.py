@@ -1,9 +1,13 @@
 import hashlib
 import httpx
+import json
+import logging
 from fastapi import Request, HTTPException
-from app.repository.redis import redis_client
+from app.core.redis import redis_client
 from app.core.config import settings
 from app.core.http_client import http_client
+
+logger = logging.getLogger(__name__)
 
 
 def _hash_key(raw_key: str):
@@ -27,10 +31,12 @@ async def fetch_from_auth_service(raw_key: str):
         if resp.status_code != 200:
             return None
 
-        return resp.json()
+        response_json = resp.json()
+        return response_json.get("data") if response_json.get("success") else None
     except httpx.TimeoutException:
         raise HTTPException(status_code=503, detail="Auth service timeout during key validation")
-    except Exception:
+    except Exception as e:
+        logger.error("Error fetching from auth service: %s", e)
         return None
 
 
@@ -47,10 +53,9 @@ async def validate_api_key(request: Request):
     try:
         cached = await redis_client.get(cache_key)
         if cached:
-            import json
             return json.loads(cached)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Redis cache read failed for API Key: %s", e)
 
     # 2. Fallback to Auth Service
     data = await fetch_from_auth_service(raw_key)
@@ -60,9 +65,8 @@ async def validate_api_key(request: Request):
 
     # 3. Cache result for 5 mins
     try:
-        import json
         await redis_client.set(cache_key, json.dumps(data), ex=300)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Redis cache write failed for API Key: %s", e)
 
     return data

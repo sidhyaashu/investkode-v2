@@ -18,6 +18,10 @@ class Settings(BaseSettings):
 
     # Limits
     MAX_REQUEST_SIZE: int = 10485760  # 10MB
+    FAIL2BAN_VIOLATIONS_MAX: int = 5
+    FAIL2BAN_BAN_DURATION: int = 86400
+    CIRCUIT_BREAKER_THRESHOLD: int = 5
+    CIRCUIT_BREAKER_COOLDOWN: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",

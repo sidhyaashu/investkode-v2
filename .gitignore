@@ -1,5 +1,7 @@
 investkode-client
-nginx
-auth_service
 watchlist_service
 .env
+__pycache__
+.venv
+.pytest_cache
+venv
