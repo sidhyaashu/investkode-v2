@@ -1,11 +1,32 @@
-import type { DynamicViewResponse } from "./types";
+import type {
+  DynamicViewResponse,
+  SortDirection,
+} from "@/components/dynamic-view/types";
 import { WatchlistViewRenderer } from "@/components/watchlist/watchlist-view-renderer";
 import { DataGridRenderer } from "./renderers/data-grid-renderer";
 
 export function DynamicViewRenderer({
   response,
+  activeListId,
+  onListChange,
+  searchQuery,
+  onSearchChange,
+  sortKey,
+  sortDir,
+  onSortChange,
+  filters,
+  onFiltersChange,
 }: {
   response: DynamicViewResponse;
+  activeListId?: string;
+  onListChange?: (listId: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (value: string) => void;
+  sortKey?: string;
+  sortDir?: SortDirection;
+  onSortChange?: (key: string) => void;
+  filters?: Record<string, string | undefined>;
+  onFiltersChange?: (filters: Record<string, string | undefined>) => void;
 }) {
   if (!response.success || response.status === "error") {
     return (
@@ -24,18 +45,36 @@ export function DynamicViewRenderer({
   }
 
   if (response.view.view_id === "watchlist.default") {
-    return <WatchlistViewRenderer view={response.view} />;
+    return (
+      <WatchlistViewRenderer
+        view={response.view}
+        activeListId={activeListId}
+        onListChange={onListChange}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSortChange={onSortChange}
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+      />
+    );
   }
 
-  switch (response.view.view_type) {
-    case "data_grid":
-      return <DataGridRenderer view={response.view} />;
-
-    default:
-      return (
-        <div className="rounded-[18px] border border-[var(--ik-rule)] bg-white/60 p-6 text-[var(--ik-ink)] dark:bg-white/5">
-          Unsupported view type: {response.view.view_type}
-        </div>
-      );
+  if (response.view.view_type === "data_grid") {
+    return (
+      <DataGridRenderer
+        view={response.view}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSortChange={onSortChange}
+      />
+    );
   }
+
+  return (
+    <div className="rounded-[18px] border border-[var(--ik-rule)] bg-white/60 p-6 text-[var(--ik-ink)] dark:bg-white/5">
+      Unsupported view type: {response.view.view_type}
+    </div>
+  );
 }
