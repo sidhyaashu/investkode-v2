@@ -7,6 +7,8 @@ import {
   fetchWatchlistView,
   fetchWatchlists,
   searchInstruments,
+  removeWatchlistItem,
+  moveWatchlistItem,
   type AddWatchlistItemPayload,
   type CreateWatchlistPayload,
 } from "./api";
@@ -15,7 +17,12 @@ import type { SortDirection } from "@/components/dynamic-view/types";
 export const watchlistKeys = {
   all: ["watchlists"] as const,
   lists: () => [...watchlistKeys.all, "lists"] as const,
-  view: (params: unknown) => [...watchlistKeys.all, "view", params] as const,
+  view: (params: { viewId: string; watchlistId?: string; mode: string; [key: string]: any }) => {
+    if (params.mode === "client") {
+      return [...watchlistKeys.all, "view", params.viewId, params.watchlistId, "client"] as const;
+    }
+    return [...watchlistKeys.all, "view", params] as const;
+  },
   search: (query: string) => [...watchlistKeys.all, "search", query] as const,
   popular: () => [...watchlistKeys.all, "popular"] as const,
 };
@@ -71,6 +78,45 @@ export function useCreateWatchlist() {
     onError: (error) => {
       toast.error(
         error instanceof Error ? error.message : "Failed to create watchlist"
+      );
+    },
+  });
+}
+
+export function useRemoveItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { watchlistId: string; itemId: string }) =>
+      removeWatchlistItem(payload.watchlistId, payload.itemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.all });
+      toast.success("Stock removed from watchlist");
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove stock"
+      );
+    },
+  });
+}
+
+export function useMoveItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      fromWatchlistId: string;
+      toWatchlistId: string;
+      itemId: string;
+    }) => moveWatchlistItem(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.all });
+      toast.success("Stock moved successfully");
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to move stock"
       );
     },
   });

@@ -39,14 +39,17 @@ export function WatchlistKpiStrip({ cards }: { cards: WatchlistKpiCard[] }) {
             <>
               <div
                 className={cn(
-                  "mt-1 font-mono text-2xl font-bold leading-none tracking-[-0.01em] text-[var(--ik-ink)]",
+                  "mt-1 font-bold text-[var(--ik-ink)] flex items-baseline",
+                  (/[a-zA-Z]{2,}/.test(String(card.value))) 
+                    ? "font-sans text-[16px] leading-tight tracking-[-0.005em]" 
+                    : "font-mono text-2xl leading-none tracking-[-0.01em]",
                   card.tone === "positive" && "text-[var(--ik-good)]",
                   card.tone === "negative" && "text-[var(--ik-danger-deep)]"
                 )}
               >
-                {card.value}
+                <span className="truncate">{card.value}</span>
                 {card.suffix ? (
-                  <small className="ml-1 text-xs font-medium text-[var(--ik-ink-3)]">
+                  <small className="ml-1.5 font-mono text-[11px] font-medium text-[var(--ik-ink-3)] shrink-0">
                     {card.suffix}
                   </small>
                 ) : null}

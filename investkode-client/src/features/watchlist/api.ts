@@ -71,6 +71,33 @@ export async function addWatchlistItem(payload: AddWatchlistItemPayload) {
   return res.data;
 }
 
+export async function removeWatchlistItem(watchlistId: string, itemId: string) {
+  const res = await apiClient<ApiEnvelope<unknown>>(
+    `/api/v1/watchlists/${watchlistId}/items/${itemId}`,
+    {
+      method: "DELETE",
+    }
+  );
+  return res.data;
+}
+
+export async function moveWatchlistItem(params: {
+  fromWatchlistId: string;
+  toWatchlistId: string;
+  itemId: string;
+}) {
+  const res = await apiClient<ApiEnvelope<unknown>>(
+    `/api/v1/watchlists/${params.fromWatchlistId}/items/${params.itemId}/move`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        target_watchlist_id: params.toWatchlistId,
+      }),
+    }
+  );
+  return res.data;
+}
+
 export async function searchInstruments(query: string) {
   if (query.trim().length < 2) return [];
 

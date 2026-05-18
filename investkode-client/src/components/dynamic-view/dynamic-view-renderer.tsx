@@ -16,6 +16,7 @@ export function DynamicViewRenderer({
   onSortChange,
   filters,
   onFiltersChange,
+  trackedFincodes,
 }: {
   response: DynamicViewResponse;
   activeListId?: string;
@@ -27,6 +28,7 @@ export function DynamicViewRenderer({
   onSortChange?: (key: string) => void;
   filters?: Record<string, string | undefined>;
   onFiltersChange?: (filters: Record<string, string | undefined>) => void;
+  trackedFincodes?: Set<string>;
 }) {
   if (!response.success || response.status === "error") {
     return (
@@ -57,6 +59,7 @@ export function DynamicViewRenderer({
         onSortChange={onSortChange}
         filters={filters}
         onFiltersChange={onFiltersChange}
+        trackedFincodes={trackedFincodes}
       />
     );
   }

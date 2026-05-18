@@ -20,6 +20,9 @@ export function WatchlistViewRenderer({
   sortKey,
   sortDir,
   onSortChange,
+  filters,
+  onFiltersChange,
+  trackedFincodes,
 }: {
   view: DynamicView;
   activeListId?: string;
@@ -31,6 +34,7 @@ export function WatchlistViewRenderer({
   onSortChange?: (key: string) => void;
   filters?: Record<string, string | undefined>;
   onFiltersChange?: (filters: Record<string, string | undefined>) => void;
+  trackedFincodes?: Set<string>;
 }) {
   const [actionModalMode, setActionModalMode] =
     useState<"add" | "create" | null>(null);
@@ -59,7 +63,7 @@ export function WatchlistViewRenderer({
               My Watchlist
             </h1>
             <p className="mt-1.5 max-w-[540px] font-sans text-[13.5px] leading-6 text-[var(--ik-ink-3)]">
-              Stocks you're tracking, organised your way.
+              Stocks you're tracking, organised your way. Click any name to dive into the full brief — price action, fundamentals, AI verdict.
             </p>
           </div>
         </section>
@@ -121,6 +125,7 @@ export function WatchlistViewRenderer({
           initialWatchlistId={currentListId === "all" ? undefined : currentListId}
           lists={watchlist?.tabs ?? []}
           presets={watchlist?.presets ?? []}
+          trackedFincodes={trackedFincodes}
         />
       ) : null}
     </>

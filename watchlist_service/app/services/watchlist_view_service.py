@@ -307,6 +307,7 @@ def _build_kpis(total_items: int, total_lists: int) -> list[dict]:
 
 async def build_watchlist_view(
     db: AsyncSession,
+    financial_db: AsyncSession,
     user_id: str,
     view_id: str,
     mode: Literal["client", "server"],
@@ -318,7 +319,7 @@ async def build_watchlist_view(
     search: Optional[str],
     filters: dict,
 ) -> dict:
-    watchlists = await list_watchlists_for_user(db=db, user_id=user_id)
+    watchlists = await list_watchlists_for_user(db=db, user_id=user_id, financial_db=financial_db)
 
     tabs = [
         {
@@ -353,14 +354,7 @@ async def build_watchlist_view(
 
     rows = [_row_from_item(item) for item in all_items]
 
-    total_before_processing = len(rows)
-    tabs[0]["count"] = total_before_processing
-
-    for tab in tabs[1:]:
-        tab["count"] = len([
-            row for row in rows
-            if tab["id"] in row.get("meta", {}).get("list_ids", [])
-        ])
+    tabs[0]["count"] = sum(int(w.get("items_count") or 0) for w in watchlists)
 
     use_client_features = mode == "client"
 

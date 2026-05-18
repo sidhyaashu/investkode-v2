@@ -12,6 +12,8 @@ import {
 } from "@/components/dynamic-view/utils/process-rows";
 import { useWatchlistView } from "@/features/watchlist/hooks";
 
+import { WatchlistSkeleton } from "./watchlist-skeleton";
+
 export function WatchlistPageClient() {
   const router = useRouter();
   const [activeTabId, setActiveTabId] = useState("all");
@@ -30,19 +32,20 @@ export function WatchlistPageClient() {
 
   const viewQuery = useWatchlistView({
     viewId: "watchlist.default",
-    watchlistId: !isAllView ? activeTabId : undefined,
+    // In client mode, we fetch ALL stocks and filter locally to avoid API calls on tab switch
+    watchlistId: tableMode === "server" && !isAllView ? activeTabId : undefined,
     mode: tableMode,
 
     /**
      * These are sent to backend only in server mode.
      * api.ts must not send them in client mode.
      */
-    page,
-    pageSize,
-    sortKey,
-    sortDir,
-    search: searchQuery.trim() || undefined,
-    filters,
+    page: tableMode === "server" ? page : 1,
+    pageSize: tableMode === "server" ? pageSize : undefined,
+    sortKey: tableMode === "server" ? sortKey : undefined,
+    sortDir: tableMode === "server" ? sortDir : undefined,
+    search: tableMode === "server" ? searchQuery.trim() || undefined : undefined,
+    filters: tableMode === "server" ? filters : {},
   });
 
   const rawResponse = viewQuery.data;
@@ -67,8 +70,17 @@ export function WatchlistPageClient() {
       return rawResponse;
     }
 
+    // In client mode, we filter rows by the active tab if it's not "all"
+    let rowsToProcess = rawRows;
+    if (activeTabId !== "all") {
+      rowsToProcess = rawRows.filter((row) => 
+        row.meta?.list_ids?.includes(activeTabId) || 
+        row.meta?.watchlist_id === activeTabId
+      );
+    }
+
     const processed = processRows({
-      rows: rawRows,
+      rows: rowsToProcess,
       search: searchQuery,
       filters,
       sortKey,
@@ -92,6 +104,7 @@ export function WatchlistPageClient() {
     rawResponse,
     rawRows,
     tableMode,
+    activeTabId, // Added activeTabId to dependencies
     searchQuery,
     filters,
     sortKey,
@@ -121,11 +134,7 @@ export function WatchlistPageClient() {
   }
 
   if (viewQuery.isLoading) {
-    return (
-      <div className="rounded-[18px] border border-[var(--ik-rule)] bg-white/60 p-6 text-[var(--ik-ink)] dark:bg-white/5">
-        Loading watchlist...
-      </div>
-    );
+    return <WatchlistSkeleton />;
   }
 
   if (viewQuery.error || !processedResponse?.success) {
@@ -182,6 +191,18 @@ export function WatchlistPageClient() {
           setFilters(nextFilters);
           setPage(1);
         }}
+        trackedFincodes={
+          new Set(
+            rawRows
+              .filter(
+                (r) =>
+                  activeTabId === "all" ||
+                  r.meta?.list_ids?.includes(activeTabId) ||
+                  r.meta?.watchlist_id === activeTabId
+              )
+              .map((r) => String(r.id || r.values.symbol))
+          )
+        }
       />
 
       {pagination && pagination.total_pages > 1 ? (

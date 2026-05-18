@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_from_gateway, get_db
+from app.api.deps import get_current_user_from_gateway, get_db, get_financial_db
 from app.core.response import success_response
 from app.schemas.watchlist import (
     WatchlistCreateRequest,
@@ -25,7 +25,7 @@ router = APIRouter(
 )
 
 
-@router.post("/")
+@router.post("")
 async def create_watchlist(
     payload: WatchlistCreateRequest,
     current=Depends(get_current_user_from_gateway),
@@ -43,14 +43,16 @@ async def create_watchlist(
     )
 
 
-@router.get("/")
+@router.get("")
 async def list_watchlists(
     current=Depends(get_current_user_from_gateway),
     db: AsyncSession = Depends(get_db),
+    financial_db: AsyncSession = Depends(get_financial_db),
 ):
     data = await list_watchlists_for_user(
         db=db,
         user_id=current["user_id"],
+        financial_db=financial_db,
     )
 
     return success_response(

@@ -32,6 +32,7 @@ interface WatchlistActionModalProps {
   initialWatchlistId?: string;
   lists: WatchlistTab[];
   presets: WatchlistPreset[];
+  trackedFincodes?: Set<string>;
 }
 
 type InstrumentResult = {
@@ -81,6 +82,7 @@ export function WatchlistActionModal({
   initialWatchlistId,
   lists,
   presets,
+  trackedFincodes,
 }: WatchlistActionModalProps) {
   const [step, setStep] = useState(1);
 
@@ -108,8 +110,12 @@ export function WatchlistActionModal({
    * Add-stock flow cannot create a new list here.
    * User can only select existing default/custom lists.
    */
+  const selectableLists = useMemo(() => {
+    return lists.filter((list) => list.id !== "all");
+  }, [lists]);
+
   const [targetWatchlistId, setTargetWatchlistId] = useState(
-    initialWatchlistId || ""
+    initialWatchlistId || (selectableLists.length === 1 ? selectableLists[0].id : "")
   );
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,10 +144,6 @@ export function WatchlistActionModal({
   const searchableInstruments = searchQuery.trim()
     ? searchResults
     : popularInstruments;
-
-  const selectableLists = useMemo(() => {
-    return lists.filter((list) => list.id !== "all");
-  }, [lists]);
 
   const selectedInstrumentIds = useMemo(() => {
     return new Set(selectedInstruments.map(getInstrumentId));
@@ -304,6 +306,7 @@ export function WatchlistActionModal({
               selectedInstrumentIds={selectedInstrumentIds}
               isLoading={searchQuery.trim() ? isSearching : isLoadingPopular}
               onToggleInstrument={toggleInstrument}
+              trackedFincodes={trackedFincodes}
             />
           ) : null}
 
@@ -466,6 +469,7 @@ function InstrumentSearchStep({
   selectedInstrumentIds,
   isLoading,
   onToggleInstrument,
+  trackedFincodes,
 }: {
   inputRef: React.RefObject<HTMLInputElement | null>;
   searchQuery: string;
@@ -474,6 +478,7 @@ function InstrumentSearchStep({
   selectedInstrumentIds: Set<string>;
   isLoading: boolean;
   onToggleInstrument: (instrument: InstrumentResult) => void;
+  trackedFincodes?: Set<string>;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -507,7 +512,8 @@ function InstrumentSearchStep({
         {instruments.length ? (
           instruments.map((instrument) => {
             const instrumentId = getInstrumentId(instrument);
-            const selected = selectedInstrumentIds.has(instrumentId);
+            const isTracked = trackedFincodes?.has(instrumentId) || trackedFincodes?.has(String(instrument.fincode));
+            const selected = selectedInstrumentIds.has(instrumentId) || isTracked;
             const isUp = Number(instrument.change ?? 0) >= 0;
 
             return (

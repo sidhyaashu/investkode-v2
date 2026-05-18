@@ -79,3 +79,27 @@ async def delete_item(
         data=WatchlistItemResponse.model_validate(item).model_dump(mode="json"),
         message="Stock removed from watchlist successfully",
     )
+
+@router.patch("/{item_id}/move")
+async def move_item(
+    watchlist_id: str,
+    item_id: str,
+    payload: dict,
+    current=Depends(get_current_user_from_gateway),
+    db: AsyncSession = Depends(get_db),
+):
+    target_watchlist_id = payload.get("target_watchlist_id")
+    
+    from app.services.watchlist_item_service import move_item_to_watchlist
+    item = await move_item_to_watchlist(
+        db=db,
+        user_id=current["user_id"],
+        from_watchlist_id=watchlist_id,
+        to_watchlist_id=target_watchlist_id,
+        item_id=item_id,
+    )
+
+    return success_response(
+        data=WatchlistItemResponse.model_validate(item).model_dump(mode="json"),
+        message="Stock moved successfully",
+    )

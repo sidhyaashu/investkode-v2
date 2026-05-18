@@ -143,7 +143,11 @@ export function DataGridRenderer({
                         column.align === "center" && "text-center"
                       )}
                     >
-                      <RenderCell column={column} row={row} />
+                      <RenderCell 
+                        column={column} 
+                        row={row} 
+                        lists={view.watchlist?.tabs} 
+                      />
                     </TableCell>
                   ))}
                 </TableRow>

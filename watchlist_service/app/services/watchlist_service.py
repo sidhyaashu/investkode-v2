@@ -15,6 +15,8 @@ from app.repository.watchlist_repo import (
     update_watchlist_record,
     update_watchlist_sort_order,
 )
+from app.repository.watchlist_item_repo import create_watchlist_item
+from app.services.stock_resolver_service import resolve_stock_for_watchlist
 from app.schemas.watchlist import (
     WatchlistCreateRequest,
     WatchlistReorderRequest,
@@ -93,13 +95,68 @@ async def create_user_watchlist(
 async def list_watchlists_for_user(
     db: AsyncSession,
     user_id: str,
+    financial_db: AsyncSession = None,
 ) -> list[dict]:
     rows = await list_user_watchlists(db, user_id)
+
+    if not rows and financial_db:
+        # Initialize default watchlist for new user
+        await initialize_default_watchlist_for_new_user(db, financial_db, user_id)
+        rows = await list_user_watchlists(db, user_id)
 
     return [
         _serialize_watchlist(watchlist, items_count=items_count)
         for watchlist, items_count in rows
     ]
+
+
+async def initialize_default_watchlist_for_new_user(
+    db: AsyncSession,
+    financial_db: AsyncSession,
+    user_id: str,
+):
+    # Idempotency check: Don't initialize if the user already has watchlists
+    existing = await list_user_watchlists(db, user_id)
+    if existing:
+        return None
+
+    # 1. Create the watchlist
+    watchlist = await create_watchlist(
+        db=db,
+        user_id=user_id,
+        name="Core Holdings",
+        description="Blue-chip foundation stocks for your portfolio",
+        is_default=True,
+        sort_order=1,
+    )
+
+    # 2. Add default stocks
+    default_fincodes = [
+        100325,  # RELIANCE
+        132540,  # TCS
+        100180,  # HDFCBANK
+        100209,  # INFY
+        100112,  # SBIN
+        132215,  # AXISBANK
+        100247,  # KOTAKBANK
+        100510,  # LT
+        100875,  # ITC
+    ]
+
+    for fincode in default_fincodes:
+        try:
+            resolved = await resolve_stock_for_watchlist(financial_db, fincode)
+            await create_watchlist_item(
+                db=db,
+                user_id=user_id,
+                watchlist_id=watchlist.id,
+                resolved=resolved,
+            )
+        except Exception:
+            # Skip if some stock fails to resolve
+            continue
+
+    return watchlist
 
 
 async def get_watchlist_for_user(

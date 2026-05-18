@@ -95,3 +95,41 @@ async def remove_item_from_watchlist(
         raise HTTPException(status_code=404, detail="Watchlist item not found")
 
     return await soft_delete_watchlist_item(db, item)
+
+async def move_item_to_watchlist(
+    db: AsyncSession,
+    user_id: str,
+    from_watchlist_id: str,
+    to_watchlist_id: str,
+    item_id: str,
+):
+    # Verify both watchlists belong to the user
+    from_watchlist = await get_user_watchlist(db, user_id, from_watchlist_id)
+    to_watchlist = await get_user_watchlist(db, user_id, to_watchlist_id)
+    
+    if not from_watchlist or not to_watchlist:
+        raise HTTPException(status_code=404, detail="Watchlist not found")
+
+    item = await get_watchlist_item(
+        db=db,
+        user_id=user_id,
+        watchlist_id=from_watchlist_id,
+        item_id=item_id,
+    )
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Watchlist item not found")
+
+    # Update watchlist_id
+    item.watchlist_id = to_watchlist_id
+    
+    try:
+        await db.commit()
+        await db.refresh(item)
+        return item
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="This company is already present in the target watchlist",
+        )

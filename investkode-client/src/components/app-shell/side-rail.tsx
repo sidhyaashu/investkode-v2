@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const nav = [
-  { href: "/", icon: HouseIcon, label: "Home" },
+  { href: "/dashboard", icon: HouseIcon, label: "Dashboard" },
   { href: "/concalls", icon: PhoneCallIcon, label: "Concalls" },
   { href: "/watchlist", icon: StarIcon, label: "Watchlist", active: true },
   { href: "/search", icon: MagnifyingGlassIcon, label: "Search" },
@@ -47,9 +47,9 @@ export function SideRail() {
 
   return (
     <aside className="flex flex-col items-center gap-2.5 border-r border-[var(--ik-rule)] bg-[linear-gradient(180deg,rgba(255,255,255,0.50),rgba(220,233,255,0.40))] py-3.5 dark:bg-[linear-gradient(180deg,rgba(20,20,23,0.7),rgba(14,14,17,0.6))]">
-      <div className="mb-2 grid size-9 place-items-center rounded-xl bg-[linear-gradient(135deg,var(--ik-accent),var(--ik-accent-2))] text-lg font-bold text-white shadow-[0_4px_12px_rgba(43,107,255,0.35)] dark:text-black">
+      {/* <div className="mb-2 grid size-9 place-items-center rounded-xl bg-[linear-gradient(135deg,var(--ik-accent),var(--ik-accent-2))] text-lg font-bold text-white shadow-[0_4px_12px_rgba(43,107,255,0.35)] dark:text-black">
         i
-      </div>
+      </div> */}
 
       {nav.map((item) => {
         const Icon = item.icon;
@@ -74,24 +74,9 @@ export function SideRail() {
 
       <button
         type="button"
-        title="Toggle theme"
-        onClick={() => setTheme(isDark ? "light" : "dark")}
-        className="grid size-[34px] place-items-center rounded-[10px] text-[var(--ik-ink-2)] transition hover:bg-white/70 hover:text-[var(--ik-accent-deep)] dark:hover:bg-white/10"
-      >
-        {!mounted ? (
-          <div className="size-[18px] animate-pulse rounded-full bg-[var(--ik-rule)]" />
-        ) : isDark ? (
-          <SunIcon size={18} />
-        ) : (
-          <MoonIcon size={18} />
-        )}
-      </button>
-
-      <button
-        type="button"
         title="Logout"
         onClick={handleLogout}
-        className="grid size-[34px] place-items-center rounded-[10px] text-[var(--ik-ink-2)] transition hover:bg-white/70 hover:text-[var(--ik-error)] dark:hover:bg-white/10"
+        className="mb-2 grid size-[34px] place-items-center rounded-[10px] text-[var(--ik-ink-2)] transition hover:bg-[var(--ik-danger-soft)] hover:text-[var(--ik-danger-deep)] dark:hover:bg-[rgba(255,59,48,0.1)]"
       >
         <SignOutIcon size={18} />
       </button>

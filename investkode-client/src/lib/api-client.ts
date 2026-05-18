@@ -31,12 +31,17 @@ export async function apiClient<T>(
     let message = `Request failed with status ${res.status}`;
 
     try {
-      const body = await res.json();
-      message =
-        body?.error?.message ||
-        body?.detail ||
-        body?.message ||
-        message;
+      const text = await res.text();
+      try {
+        const body = JSON.parse(text);
+        message =
+          body?.error?.message ||
+          body?.detail ||
+          body?.message ||
+          text;
+      } catch {
+        message = text || message;
+      }
     } catch {
       // keep fallback message
     }

@@ -39,6 +39,8 @@ export type Formatter =
   | "percentage"
   | "number"
   | "market_cap"
+  | "market_cap_inr"
+  | "percent"
   | "pe";
 
 export type WatchlistType =
@@ -113,6 +115,7 @@ export type DynamicRow = {
 
   meta?: {
     list_ids?: string[];
+    watchlist_id?: string;
     draggable?: boolean;
 
     logo?: {

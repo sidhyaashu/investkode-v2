@@ -51,7 +51,7 @@ export function RenderCell({ column, row, lists = [] }: CellProps) {
             toneClass(tone)
           )}
         >
-          {formatValue(value, column.formatter ?? "percentage")}
+          {formatValue(value, column.formatter ?? "percentage", row)}
         </span>
       );
     }
@@ -67,22 +67,23 @@ export function RenderCell({ column, row, lists = [] }: CellProps) {
           : 0;
 
       return (
-        <div className="min-w-[150px]">
-          <div className="relative h-1.5 rounded-full bg-[var(--ik-rule)]">
+        <div className="inline-block w-[120px]">
+          <div
+            className="relative h-1.5 rounded-full border border-[var(--ik-rule-2)]"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(226,85,122,.18), rgba(226,154,43,.18) 50%, rgba(16,163,127,.18))",
+            }}
+          >
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,var(--ik-accent),var(--ik-good))]"
-              style={{ width: `${pct}%` }}
-            />
-            {/* Knob/Handle */}
-            <div
-              className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-md border-[2.5px] border-white bg-[#5B72A0] shadow-[0_2px_4px_rgba(0,0,0,0.2)] dark:border-[#1A1A1D]"
+              className="absolute -top-[3px] h-3 w-[3px] -translate-x-1/2 rounded-[2px] bg-[var(--ik-ink)] shadow-[0_0_0_2px_rgba(255,255,255,0.9),0_0_0_3px_rgba(11,37,69,0.15)] dark:bg-white dark:shadow-[0_0_0_2px_rgba(0,0,0,0.9),0_0_0_3px_rgba(255,255,255,0.15)]"
               style={{ left: `${pct}%` }}
             />
           </div>
-          <div className="mt-2.5 flex justify-between font-mono text-[9px] font-semibold tracking-wider text-[var(--ik-ink-3)]">
-            <span className="opacity-70">₹{Number.isFinite(low) ? low.toLocaleString() : "—"}</span>
-            <span className="text-[var(--ik-accent-deep)] dark:text-white">{pct.toFixed(0)}%</span>
-            <span className="opacity-70">₹{Number.isFinite(high) ? high.toLocaleString() : "—"}</span>
+          <div className="mt-1 flex justify-between font-mono text-[9.5px] tracking-[-0.005em] text-[var(--ik-ink-3)]">
+            <span>₹{Number.isFinite(low) ? low.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—"}</span>
+            <span className="font-semibold text-[var(--ik-accent-deep)] dark:text-white">{pct.toFixed(0)}%</span>
+            <span>₹{Number.isFinite(high) ? high.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—"}</span>
           </div>
         </div>
       );
@@ -91,14 +92,14 @@ export function RenderCell({ column, row, lists = [] }: CellProps) {
     case "badge":
       return (
         <span className="inline-flex rounded-full border border-[var(--ik-rule)] bg-white/50 px-2 py-1 font-mono text-[10.5px] font-medium text-[var(--ik-ink-2)] dark:bg-white/5">
-          {formatValue(value, column.formatter)}
+          {formatValue(value, column.formatter, row)}
         </span>
       );
 
     case "number":
       return (
         <span className="font-mono text-[12.5px] font-semibold text-[var(--ik-ink)]">
-          {formatValue(value, column.formatter)}
+          {formatValue(value, column.formatter, row)}
         </span>
       );
 
@@ -109,7 +110,7 @@ export function RenderCell({ column, row, lists = [] }: CellProps) {
     default:
       return (
         <span className="text-[12.5px] text-[var(--ik-ink-2)]">
-          {formatValue(value, column.formatter)}
+          {formatValue(value, column.formatter, row)}
         </span>
       );
   }

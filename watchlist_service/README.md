@@ -371,3 +371,268 @@ Add Alembic migration - i want to migrate automate before when the service will 
 Add health endpoint
 Add internal auth dependency
 ```
+
+
+```plaintext
+{
+  "success": true,
+  "status": "ok",
+  "request_id": "req_abc",
+  "schema_version": "1.0",
+  "view": {
+    "view_id": "watchlist.default",
+    "view_type": "data_grid",
+    "title": "Watchlist",
+    "description": "Stocks tracked by the user",
+    "context": {
+      "entity_type": "watchlist",
+      "entity_id": null
+    },
+    "permissions": {
+      "access": "allowed",
+      "plan": "free",
+      "required_plan": "free",
+      "can_view": true,
+      "can_export": false,
+      "can_customize_layout": true,
+      "can_sort": true,
+      "can_filter": true,
+      "can_add_column": false,
+      "can_remove_column": true,
+      "can_expand_rows": true,
+      "can_view_nested_data": true
+    },
+    "features": {
+      "searchable": true,
+      "sortable": true,
+      "filterable": true,
+      "exportable": false,
+      "pagination": true,
+      "column_customization": true,
+      "row_actions": true,
+      "bulk_actions": false,
+      "mobile_card_view": true,
+      "virtualized": false,
+      "expandable_rows": true,
+      "lazy_expansion": true,
+      "nested_views": true,
+      "expansion_cache": true,
+      "client_sorting": true,
+      "client_filtering": true,
+      "client_pagination": true,
+      "server_sorting": false,
+      "server_filtering": false,
+      "server_pagination": false
+    },
+    "layout": {
+      "density": "compact",
+      "variant": "glass",
+      "responsive_mode": "table_to_cards",
+      "pinned_columns": ["stock"],
+      "pinned_rows": [],
+      "default_page_size": 10,
+      "expansion_position": "below_row",
+      "expansion_indent": true
+    },
+    "user_layout": {
+      "source": "default",
+      "visible_columns": [],
+      "column_order": [],
+      "column_widths": {},
+      "pinned_columns": ["stock"],
+      "expanded_rows": [],
+      "sort": {
+        "key": "position",
+        "direction": "asc"
+      },
+      "filters": [],
+      "density": "compact"
+    },
+    "actions": [
+      {
+        "id": "add_stock",
+        "label": "Add stock",
+        "scope": "view",
+        "type": "modal"
+      },
+      {
+        "id": "create_list",
+        "label": "New list",
+        "scope": "view",
+        "type": "modal"
+      }
+    ],
+    "columns": [
+      {
+        "key": "stock",
+        "label": "Stock",
+        "type": "company",
+        "cell_renderer": "company_cell",
+        "sortable": true,
+        "filterable": true,
+        "hideable": false,
+        "default_visible": true,
+        "width": 260,
+        "min_width": 240,
+        "align": "left"
+      },
+      {
+        "key": "last_price",
+        "label": "Last Price",
+        "type": "currency",
+        "formatter": "currency_inr",
+        "sortable": true,
+        "filterable": true,
+        "hideable": true,
+        "default_visible": true,
+        "width": 130,
+        "align": "right"
+      }
+    ],
+    "data": {
+      "rows": [
+        {
+          "id": "item_123",
+          "values": {
+            "stock": {
+              "company_name": "ICICI Bank",
+              "symbol": "ICICIBANK",
+              "exchange": "NSE"
+            },
+            "company_name": "ICICI Bank",
+            "symbol": "ICICIBANK",
+            "exchange": "NSE",
+            "last_price": null,
+            "change_percent": null,
+            "market_cap": "—",
+            "pe": null,
+            "sector": "Banks & NBFC",
+            "actions": null
+          },
+          "meta": {
+            "list_ids": ["wl_123"],
+            "draggable": true,
+            "logo": {
+              "type": "initials",
+              "label": "IC",
+              "variant": "banks"
+            }
+          },
+          "_row": {
+            "expandable": true,
+            "expansion_key": "company_snapshot",
+            "expansion_label": "Company snapshot",
+            "expansion_mode": "nested_view"
+          }
+        }
+      ]
+    },
+    "pagination": {
+      "page": 1,
+      "page_size": 10,
+      "total_rows": 1,
+      "total_pages": 1,
+      "mode": "client"
+    },
+    "sorting": {
+      "mode": "client",
+      "default": {
+        "key": "position",
+        "direction": "asc"
+      },
+      "allowed_keys": [
+        "position",
+        "stock",
+        "company_name",
+        "symbol",
+        "exchange",
+        "last_price",
+        "change_percent",
+        "market_cap",
+        "pe",
+        "sector"
+      ]
+    },
+    "filters": [
+      {
+        "key": "exchange",
+        "label": "Exchange",
+        "type": "select",
+        "options": ["NSE", "BSE"]
+      },
+      {
+        "key": "sector",
+        "label": "Sector",
+        "type": "text",
+        "options": []
+      }
+    ],
+    "row_expansion": {
+      "enabled": true,
+      "mode": "nested_view",
+      "trigger": "row_click",
+      "endpoint": "/api/v1/views/watchlist.default/rows/{row_id}/expand",
+      "allowed_expansion_keys": ["company_snapshot"],
+      "cache_ttl_seconds": 300
+    },
+    "meta": {
+      "source": {
+        "type": "internal_db",
+        "name": "InvestKaro DB",
+        "vendor": "Accord Fintech"
+      },
+      "freshness": "monthly",
+      "data_quality": "partial",
+      "currency": "INR",
+      "unit": "mixed",
+      "warnings": [
+        "Price data is based on the latest available monthly feed, not real-time market data."
+      ],
+      "client_processing_limit": 100
+    },
+    "empty_state": {
+      "title": "No stocks in watchlist",
+      "description": "Add stocks to start tracking them.",
+      "action": {
+        "key": "add_stock",
+        "label": "Add Stock"
+      }
+    },
+    "watchlist": {
+      "active_list_id": "all",
+      "allow_new_list": true,
+      "allow_add_stock": true,
+      "allow_drag_reorder": true,
+      "allow_export": false,
+      "tabs": [
+        {
+          "id": "all",
+          "label": "All",
+          "count": 1,
+          "type": "all",
+          "source": "default",
+          "is_default": true
+        }
+      ],
+      "presets": [
+        {
+          "id": "preset_core",
+          "label": "Core holdings",
+          "description": "Your long-term foundation stocks",
+          "type": "core"
+        }
+      ],
+      "kpis": [
+        {
+          "key": "tracked",
+          "label": "Tracked",
+          "value": 1,
+          "helper": "across 1 lists",
+          "sparkline": [18, 14, 16, 10, 12, 6, 9, 4, 7],
+          "tone": "accent"
+        }
+      ]
+    }
+  }
+}
+```

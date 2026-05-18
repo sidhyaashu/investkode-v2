@@ -10,10 +10,10 @@ export function InvestKodeShell({
   className?: string;
 }) {
   return (
-    <main className="min-h-screen text-[var(--ik-ink)]">
+    <main className="h-screen w-screen overflow-hidden text-[var(--ik-ink)]">
       <section
         className={cn(
-          "mx-auto grid min-h-[calc(100vh-36px)] w-full grid-cols-[56px_1fr] overflow-hidden",
+          "mx-auto grid h-full w-full grid-cols-[56px_1fr] overflow-hidden",
           "border border-[var(--ik-glass-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.65),rgba(255,255,255,0.45))]",
           "shadow-[var(--ik-glass-shadow)] backdrop-blur-2xl",
           "dark:bg-[linear-gradient(180deg,rgba(22,22,25,0.88),rgba(15,15,18,0.82))]",
@@ -21,9 +21,11 @@ export function InvestKodeShell({
         )}
       >
         <SideRail />
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-col h-full overflow-hidden">
           <Topbar />
-          {children}
+          <div className="flex-1 overflow-y-auto">
+            {children}
+          </div>
         </div>
       </section>
     </main>
