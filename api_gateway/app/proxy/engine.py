@@ -46,9 +46,9 @@ def build_headers(request: Request):
         if k.lower() in ALLOWED_HEADERS
     }
 
-    access_token = request.cookies.get("access_token")
-    if access_token:
-        headers["cookie"] = f"access_token={access_token}"
+    cookies = [f"{k}={v}" for k, v in request.cookies.items()]
+    if cookies:
+        headers["cookie"] = "; ".join(cookies)
 
     # Inject identity and tracing headers
     for attr in ["user_id", "tier", "auth_type", "request_id"]:
@@ -116,12 +116,9 @@ async def proxy_request(request: Request, route_config: dict, path: str):
         upstream_resp = await retry(_do_proxy, method=request.method)
         await breaker.success()
 
-        # 🛡️ Normalize Upstream Errors
-        if upstream_resp.status_code >= 400:
-            raise HTTPException(
-                status_code=upstream_resp.status_code,
-                detail=upstream_resp.text
-            )
+        # 🛡️ Proxy Upstream Errors Directly
+        # We don't raise HTTPException here because internal services already format 
+        # their errors. Raising it here causes double-JSON wrapping in the gateway's handler.
 
         # 🌟 UPGRADE: Save to Edge Cache if successful and TTL > 0
         if request.method == "GET" and cache_ttl > 0 and upstream_resp.status_code == 200:

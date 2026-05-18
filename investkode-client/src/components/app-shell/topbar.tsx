@@ -15,7 +15,7 @@ export function Topbar() {
   const isDark = theme === "dark";
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-[var(--ik-rule)] bg-[linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0.25))] px-[18px] backdrop-blur-xl dark:bg-[linear-gradient(180deg,rgba(22,22,25,0.70),rgba(15,15,18,0.40))]">
+    <header className="flex h-14 items-center justify-between border-b border-[var(--ik-rule)] bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,255,255,0.92))] px-[18px] dark:bg-[linear-gradient(180deg,#0a0a0b,#111114)]">
       <div className="flex items-center gap-3">
         <div className="grid size-7 place-items-center rounded-lg bg-[linear-gradient(135deg,var(--ik-accent),var(--ik-accent-2))] text-sm font-bold text-white shadow-[0_4px_12px_rgba(43,107,255,0.35)] dark:text-black">
           i

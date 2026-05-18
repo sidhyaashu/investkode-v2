@@ -79,6 +79,9 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
 
         rows = [self._map_row(row) for row in rows_raw]
 
+        is_client_mode = total_rows <= self.client_processing_limit
+        dynamic_mode = "client" if is_client_mode else "server"
+
         return DynamicView(
             view_id=self.view_id,
             view_type="data_grid",
@@ -98,7 +101,7 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
             ),
 
             features=build_features(
-                mode=self.context.mode,
+                mode=dynamic_mode,
                 exportable=self.context.plan in {"pro", "enterprise"},
                 expandable_rows=True,
                 lazy_expansion=True,
@@ -127,17 +130,17 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
             },
 
             pagination=build_pagination(
-                page=self.context.page if self.context.mode == "server" else 1,
+                page=self.context.page if dynamic_mode == "server" else 1,
                 page_size=self.context.page_size,
                 total_rows=total_rows,
-                mode=self.context.mode,
+                mode=dynamic_mode,
             ),
 
             sorting=build_sorting(
                 sort_key=sort_key,
                 sort_dir=sort_dir,
                 allowed_keys=list(self.allowed_sort_keys.keys()),
-                mode=self.context.mode,
+                mode=dynamic_mode,
             ),
 
             filters=self._build_filters(),
@@ -241,6 +244,7 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
                 key="market_cap",
                 label="Market Cap",
                 column_type="number",
+                renderer="number",
                 formatter="market_cap_inr",
                 sortable=True,
                 filterable=True,
@@ -251,6 +255,7 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
                 key="pe",
                 label="P/E",
                 column_type="number",
+                renderer="number",
                 formatter="ratio",
                 sortable=True,
                 filterable=True,
@@ -259,7 +264,7 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
             ),
             make_column(
                 key="sector",
-                label="Sector",
+                label="Industry",
                 column_type="badge",
                 renderer="badge",
                 sortable=True,
@@ -290,7 +295,7 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
             ),
             make_filter(
                 key="sector",
-                label="Sector",
+                label="Industry",
                 filter_type="text",
             ),
         ]
@@ -502,6 +507,7 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
                 "actions": None,
             },
             "meta": {
+                "fincode": row.get("fincode"),
                 "list_ids": [str(row.get("watchlist_id"))],
                 "watchlist_id": str(row.get("watchlist_id")),
                 "draggable": True,
@@ -539,12 +545,15 @@ class WatchlistDefaultViewBuilder(BaseViewBuilder):
         return "custom"
 
     def _guess_logo_variant(self, sector: str | None) -> str:
-        text = str(sector or "").lower()
+        text = str(sector or "").strip().lower()
+        
+        if not text or text == "—" or text == "-":
+            return "color_1"
 
-        if "bank" in text or "finance" in text or "nbfc" in text:
-            return "banks"
-
-        if "it" in text or "software" in text or "technology" in text:
-            return "it"
-
-        return "default"
+        import hashlib
+        # Hash the sector name to get a consistent integer
+        hash_val = int(hashlib.md5(text.encode('utf-8')).hexdigest(), 16)
+        
+        # Map to an index between 1 and 6
+        color_index = (hash_val % 6) + 1
+        return f"color_{color_index}"

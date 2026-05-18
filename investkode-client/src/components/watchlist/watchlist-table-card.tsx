@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export function WatchlistTableCard({
   title,
@@ -38,6 +38,7 @@ export function WatchlistTableCard({
   sortKey,
   sortDir,
   onSort,
+  isClientSort,
 }: {
   title: string;
   rows: DynamicRow[];
@@ -52,9 +53,54 @@ export function WatchlistTableCard({
   sortKey?: string | null;
   sortDir?: "asc" | "desc" | null;
   onSort?: (key: string) => void;
+  isClientSort?: boolean;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<{ id: string; position: "top" | "bottom" } | null>(null);
+
+  const [localSortKey, setLocalSortKey] = useState<string | null>(sortKey ?? null);
+  const [localSortDir, setLocalSortDir] = useState<"asc" | "desc" | null>(sortDir ?? null);
+
+  const activeSortKey = isClientSort ? localSortKey : sortKey;
+  const activeSortDir = isClientSort ? localSortDir : sortDir;
+
+  const handleSort = (key: string) => {
+    if (isClientSort) {
+      if (localSortKey === key) {
+        if (localSortDir === "asc") setLocalSortDir("desc");
+        else if (localSortDir === "desc") {
+          setLocalSortKey(null);
+          setLocalSortDir(null);
+        }
+      } else {
+        setLocalSortKey(key);
+        setLocalSortDir("asc");
+      }
+    } else {
+      onSort?.(key);
+    }
+  };
+
+  const processedRows = useMemo(() => {
+    if (!isClientSort || !activeSortKey) return rows;
+
+    return [...rows].sort((a, b) => {
+      const valA = a.values[activeSortKey];
+      const valB = b.values[activeSortKey];
+
+      if (valA == null && valB == null) return 0;
+      if (valA == null) return activeSortDir === "asc" ? 1 : -1;
+      if (valB == null) return activeSortDir === "asc" ? -1 : 1;
+
+      if (typeof valA === "number" && typeof valB === "number") {
+        return activeSortDir === "asc" ? valA - valB : valB - valA;
+      }
+
+      const strA = String(valA);
+      const strB = String(valB);
+      return activeSortDir === "asc" ? strA.localeCompare(strB) : strB.localeCompare(strA);
+    });
+  }, [rows, activeSortKey, activeSortDir, isClientSort]);
 
   function reorder(dropId: string, position: "top" | "bottom") {
     if (!dragId || dragId === dropId) return;
@@ -74,13 +120,13 @@ export function WatchlistTableCard({
   }
 
   return (
-    <section className="overflow-hidden rounded-[18px] border border-[var(--ik-glass-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.55))] shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_8px_24px_-10px_rgba(43,69,112,0.16)] backdrop-blur-xl dark:bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(18,18,21,0.62))] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_8px_24px_-10px_rgba(0,0,0,0.6)]">
+    <section className="overflow-hidden rounded-[18px] border border-[var(--ik-glass-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.93))] shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_8px_24px_-10px_rgba(43,69,112,0.16)] dark:bg-[linear-gradient(180deg,rgba(24,24,27,0.97),rgba(18,18,21,0.94))] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_8px_24px_-10px_rgba(0,0,0,0.6)]">
       <div className="flex flex-wrap items-center justify-between gap-3.5 border-b border-[var(--ik-rule)] px-[18px] py-3.5">
         <div className="flex items-center gap-2.5 font-sans text-sm font-semibold text-[var(--ik-ink)]">
           <Star size={16} className="text-[var(--ik-accent-deep)]" />
           <span>{title}</span>
           <span className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-[var(--ik-ink-3)]">
-            {rows.length} {rows.length === 1 ? "item" : "items"}
+            {processedRows.length} {processedRows.length === 1 ? "item" : "items"}
           </span>
         </div>
 
@@ -117,13 +163,13 @@ export function WatchlistTableCard({
               ) : null}
 
               {columns.map((column) => {
-                const isActive = sortKey === column.key;
+                const isActive = activeSortKey === column.key;
                 const canSort = column.sortable !== false;
 
                 return (
                   <TableHead
                     key={column.key}
-                    onClick={() => canSort && onSort?.(column.key)}
+                    onClick={() => canSort && handleSort(column.key)}
                     className={cn(
                       "sticky top-0 h-10 whitespace-nowrap border-b border-[var(--ik-rule)] bg-white/40 px-3.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--ik-ink-3)] dark:bg-[rgba(18,18,21,0.55)]",
                       column.align === "right" && "text-right",
@@ -143,7 +189,7 @@ export function WatchlistTableCard({
                           "text-[9px] transition-opacity",
                           isActive ? "opacity-100 text-[var(--ik-accent-deep)]" : "opacity-30"
                         )}>
-                          {isActive ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                          {isActive ? (activeSortDir === "asc" ? "▲" : "▼") : "↕"}
                         </span>
                       ) : null}
                     </div>
@@ -154,8 +200,8 @@ export function WatchlistTableCard({
           </TableHeader>
 
           <TableBody>
-            {rows.length ? (
-              rows.map((row) => {
+            {processedRows.length ? (
+              processedRows.map((row) => {
                 const isDragging = dragId === row.id;
                 const overTop = dragOver?.id === row.id && dragOver.position === "top";
                 const overBottom = dragOver?.id === row.id && dragOver.position === "bottom";

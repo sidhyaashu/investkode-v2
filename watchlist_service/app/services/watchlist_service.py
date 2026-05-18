@@ -120,15 +120,23 @@ async def initialize_default_watchlist_for_new_user(
     if existing:
         return None
 
-    # 1. Create the watchlist
-    watchlist = await create_watchlist(
-        db=db,
-        user_id=user_id,
-        name="Core Holdings",
-        description="Blue-chip foundation stocks for your portfolio",
-        is_default=True,
-        sort_order=1,
-    )
+    # 1. Create the watchlist (handled concurrently)
+    try:
+        watchlist = await create_watchlist(
+            db=db,
+            user_id=user_id,
+            name="Core Holdings",
+            description="Blue-chip foundation stocks for your portfolio",
+            is_default=True,
+            sort_order=1,
+        )
+    except IntegrityError:
+        await db.rollback()
+        # Retrieve the watchlist successfully created by the other thread
+        watchlist = await get_watchlist_by_name(db, user_id, "Core Holdings")
+        if not watchlist:
+            raise
+        return watchlist
 
     # 2. Add default stocks
     default_fincodes = [

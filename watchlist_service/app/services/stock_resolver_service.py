@@ -4,6 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.financial import CompanyMaster
 from app.schemas.watchlist_item import WatchlistItemResolvedCreate
+from sqlalchemy.orm import joinedload
+from app.models.financial import CompanyEquity, NSEMonthPrice
+
+from sqlalchemy.orm import joinedload
+from app.models.financial import CompanyEquity
 
 
 def _clean(value):
@@ -138,8 +143,7 @@ async def search_instruments(
 
     like = f"%{q}%"
 
-    from sqlalchemy.orm import joinedload
-    from app.models.financial import CompanyEquity, NSEMonthPrice
+
     
     # Subquery for latest price stats to get change
     # We'll just join the latest record for each fincode
@@ -168,10 +172,11 @@ async def search_instruments(
     companies = result.scalars().unique().all()
     
     # Fetch price change data for these companies
-    fincodes = [c.fincode for c in companies]
     change_data = {}
+    nse_fincodes = [c.fincode for c in companies if c.symbol]
+    bse_fincodes = [c.fincode for c in companies if not c.symbol and c.scripcode]
     
-    if fincodes:
+    if nse_fincodes:
         price_stmt = text("""
             SELECT DISTINCT ON (fincode)
                 fincode, "open", "close"
@@ -179,7 +184,22 @@ async def search_instruments(
             WHERE fincode = ANY(:fincodes)
             ORDER BY fincode, "year" DESC, "month" DESC
         """)
-        prices = await financial_db.execute(price_stmt, {"fincodes": fincodes})
+        prices = await financial_db.execute(price_stmt, {"fincodes": nse_fincodes})
+        for row in prices:
+            open_p = float(row[1]) if row[1] else 0
+            close_p = float(row[2]) if row[2] else 0
+            if open_p > 0:
+                change_data[row[0]] = ((close_p - open_p) / open_p) * 100
+
+    if bse_fincodes:
+        price_stmt = text("""
+            SELECT DISTINCT ON (fincode)
+                fincode, "open", "close"
+            FROM public.monthlyprice
+            WHERE fincode = ANY(:fincodes)
+            ORDER BY fincode, "year" DESC, "month" DESC
+        """)
+        prices = await financial_db.execute(price_stmt, {"fincodes": bse_fincodes})
         for row in prices:
             open_p = float(row[1]) if row[1] else 0
             close_p = float(row[2]) if row[2] else 0
@@ -211,8 +231,7 @@ async def get_popular_instruments(
         "ITC",
     ]
 
-    from sqlalchemy.orm import joinedload
-    from app.models.financial import CompanyEquity
+
     
     stmt = (
         select(CompanyMaster)
@@ -237,4 +256,26 @@ async def get_popular_instruments(
         if symbol in by_symbol
     ]
 
-    return [_instrument_payload(company) for company in ordered]
+    # Fetch price change data for popular instruments
+    fincodes = [c.fincode for c in ordered]
+    change_data = {}
+    
+    if fincodes:
+        price_stmt = text("""
+            SELECT DISTINCT ON (fincode)
+                fincode, "open", "close"
+            FROM public.nse_monthprice
+            WHERE fincode = ANY(:fincodes)
+            ORDER BY fincode, "year" DESC, "month" DESC
+        """)
+        prices = await financial_db.execute(price_stmt, {"fincodes": fincodes})
+        for row in prices:
+            open_p = float(row[1]) if row[1] else 0
+            close_p = float(row[2]) if row[2] else 0
+            if open_p > 0:
+                change_data[row[0]] = ((close_p - open_p) / open_p) * 100
+
+    return [
+        {**_instrument_payload(company), "change": change_data.get(company.fincode)} 
+        for company in ordered
+    ]

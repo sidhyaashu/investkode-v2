@@ -5,6 +5,8 @@ from app.core.config import settings
 from fastapi import Response
 
 
+from app.api.deps import JWT_AUDIENCE, JWT_ISSUER
+
 def create_access_token(user_id: str, scope: str = "user"):
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
@@ -13,8 +15,8 @@ def create_access_token(user_id: str, scope: str = "user"):
     payload = {
         "sub": user_id,
         "scope": scope,
-        "iss": "auth_service",
-        "aud": "investcode",
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
         "exp": expire,
         "iat": datetime.now(timezone.utc),
     }

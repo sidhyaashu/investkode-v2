@@ -41,7 +41,8 @@ export type Formatter =
   | "market_cap"
   | "market_cap_inr"
   | "percent"
-  | "pe";
+  | "pe"
+  | "ratio";
 
 export type WatchlistType =
   | "all"
@@ -114,6 +115,7 @@ export type DynamicRow = {
   values: Record<string, unknown>;
 
   meta?: {
+    fincode?: number | string;
     list_ids?: string[];
     watchlist_id?: string;
     draggable?: boolean;
@@ -198,6 +200,12 @@ export type DynamicView = {
     lazy_expansion?: boolean;
     nested_views?: boolean;
     row_reorder?: boolean;
+    client_sorting?: boolean;
+    server_sorting?: boolean;
+    client_filtering?: boolean;
+    server_filtering?: boolean;
+    client_pagination?: boolean;
+    server_pagination?: boolean;
   };
 
   layout?: {

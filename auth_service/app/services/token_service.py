@@ -10,7 +10,8 @@ from app.repository.token_repo import (
     get_token,
     revoke_token,
     count_user_sessions,
-    revoke_oldest_session
+    revoke_oldest_session,
+    revoke_all_user_tokens
 )
 from app.services.jwt_service import create_access_token
 from app.core.redis import redis_client
@@ -62,10 +63,6 @@ async def create_session(db: AsyncSession, user_id: str, raw_refresh: str, reque
 async def refresh_session(db: AsyncSession, raw_refresh: str, request: Request = None):
     token_hash = hash_token(raw_refresh)
 
-    # 🔥 check blacklist (Replay Protection)
-    if await is_blacklisted(token_hash):
-        raise HTTPException(status_code=401, detail="Token reuse detected")
-
     token = await get_token(db, token_hash)
 
     if not token or token.revoked:
@@ -74,8 +71,15 @@ async def refresh_session(db: AsyncSession, raw_refresh: str, request: Request =
     if token.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Refresh token expired")
 
-    # 🔥 blacklist old token
-    await blacklist_token(token_hash)
+    # 🔥 Atomic Blacklist Set using Redis SET key "1" EX ttl NX (Set if Not Exists)
+    # If the key is successfully set, it returns True/Ok. If it fails, it means token reuse is detected!
+    ttl = settings.TOKEN_BLACKLIST_TTL
+    is_set = await redis_client.set(f"blacklist:{token_hash}", "1", ex=ttl, nx=True)
+
+    if not is_set:
+        # Enforce strict replay security policy: revoke all active sessions for this compromised user
+        await revoke_all_user_tokens(db, token.user_id)
+        raise HTTPException(status_code=401, detail="Token reuse detected")
 
     # 🔁 ROTATION
     await revoke_token(db, token_hash)

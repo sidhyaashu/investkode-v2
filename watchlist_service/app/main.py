@@ -10,6 +10,8 @@ from app.core.config import settings
 from app.core.response import success_response, error_response
 from app.db.session import watchlist_engine
 from app.db.financial_session import financial_engine
+from app.db.base import Base
+from app.models.watchlist import Watchlist, WatchlistItem
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +23,10 @@ async def lifespan(app: FastAPI):
 
     try:
         async with watchlist_engine.begin() as conn:
+            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS app"))
+            await conn.run_sync(Base.metadata.create_all)
             await conn.execute(text("SELECT 1"))
-        logger.info("Watchlist database connected")
+        logger.info("Watchlist database connected and schema verified")
     except Exception as e:
         logger.exception("Watchlist database connection failed")
         raise RuntimeError("Watchlist database startup check failed") from e

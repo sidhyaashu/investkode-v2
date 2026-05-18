@@ -3,14 +3,18 @@ from fastapi import HTTPException
 from app.core.config import settings
 
 
+JWT_AUDIENCE = "investcode"
+JWT_ISSUER = "auth_service"
+
+
 def decode_jwt(token: str):
     try:
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            audience="investcode",
-            issuer="auth_service"
+            audience=JWT_AUDIENCE,
+            issuer=JWT_ISSUER
         )
         return payload
 

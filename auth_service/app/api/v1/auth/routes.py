@@ -68,7 +68,7 @@ async def login(
             raise HTTPException(status_code=429, detail="Too many login attempts. Try again in 5 mins.")
 
         user, access_token, refresh_token = await login_user(
-            db, payload.email, payload.password
+            db, payload.email, payload.password, request
         )
 
         # 🍪 Set cookies
@@ -217,7 +217,7 @@ async def send_verification_otp(payload: dict, request: Request, db: AsyncSessio
 
 
 @router.post("/verify-otp")
-async def verify_otp_route(payload: dict, request: Request, db: AsyncSession = Depends(get_db)):
+async def verify_otp_route(payload: dict, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     email = payload.get("email")
     otp = payload.get("otp")
 
@@ -239,12 +239,27 @@ async def verify_otp_route(payload: dict, request: Request, db: AsyncSession = D
     refresh_token = create_new_refresh()
     await create_session(db, user.id, refresh_token, request)
 
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        max_age=1800,
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        max_age=7 * 24 * 3600,
+    )
+
     await log_event(db, "verify_email", "success", user.id, request)
     return success_response(
-        data={
-            "access_token": access_token,
-            "refresh_token": refresh_token
-        },
+        data={"id": user.id, "email": user.email},
         message="Email verified successfully"
     )
 

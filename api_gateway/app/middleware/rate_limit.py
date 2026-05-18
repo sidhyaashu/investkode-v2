@@ -71,8 +71,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
                 # 🌟 UPGRADE: Record a violation. If > FAIL2BAN_VIOLATIONS_MAX, ban IP.
                 violation_key = f"violations:ip:{ip}"
-                violations = await redis_client.incr(violation_key)
-                if int(violations) == 1:
+                pipe = redis_client.pipeline()
+                pipe.incr(violation_key)
+                pipe.ttl(violation_key)
+                res = await pipe.execute()
+                violations = int(res[0])
+                violations_ttl = int(res[1])
+                if violations_ttl < 0:
                     await redis_client.expire(violation_key, 60)  # Count violations per minute
 
                 if int(violations) > settings.FAIL2BAN_VIOLATIONS_MAX:

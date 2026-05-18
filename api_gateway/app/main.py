@@ -76,8 +76,8 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(RequestSizeMiddleware)
 
 # Protection Middlewares
-app.add_middleware(AuthMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(AuthMiddleware)
 # Routes
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(proxy_router)  

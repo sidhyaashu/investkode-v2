@@ -4,10 +4,17 @@ from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 
 
-async def get_db():
+async def get_db(request: Request = None):
     async with AsyncSessionLocal() as session:
-        async with session.begin():
+        if request and request.method == "GET":
             yield session
+        else:
+            async with session.begin():
+                yield session
+
+
+JWT_AUDIENCE = "investcode"
+JWT_ISSUER = "auth_service"
 
 
 def decode_token(token: str):
@@ -16,8 +23,8 @@ def decode_token(token: str):
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            audience="investKode",
-            issuer="auth_service"
+            audience=JWT_AUDIENCE,
+            issuer=JWT_ISSUER,
         )
         return payload
     except jwt.ExpiredSignatureError:

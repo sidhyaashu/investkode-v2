@@ -43,11 +43,18 @@ class DistributedCircuitBreaker:
     async def failure(self):
         """Increments failure count and trips the circuit if threshold is reached."""
         try:
-            failures = await redis_client.incr(f"{self.key}:failures")
-            if int(failures) == 1:
+            pipe = redis_client.pipeline()
+            pipe.incr(f"{self.key}:failures")
+            pipe.ttl(f"{self.key}:failures")
+            result = await pipe.execute()
+
+            failures = int(result[0])
+            failures_ttl = int(result[1])
+
+            if failures_ttl < 0:
                 await redis_client.expire(f"{self.key}:failures", self.cooldown)
 
-            if int(failures) >= self.threshold:
+            if failures >= self.threshold:
                 # Trip the breaker for the specified cooldown period
                 await redis_client.set(f"{self.key}:open", "true", ex=self.cooldown)
         except Exception:

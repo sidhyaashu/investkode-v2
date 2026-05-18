@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.user_repo import get_user_by_email, create_user
@@ -33,7 +33,7 @@ async def register_user(db: AsyncSession, email: str, password: str):
     return user
 
 
-async def login_user(db: AsyncSession, email: str, password: str):
+async def login_user(db: AsyncSession, email: str, password: str, request: Request = None):
     # 🔍 1. Find user
     user = await get_user_by_email(db, email)
 
@@ -54,6 +54,6 @@ async def login_user(db: AsyncSession, email: str, password: str):
     refresh_token = create_new_refresh()
 
     # 🔁 6. Store session
-    await create_session(db, user.id, refresh_token)
+    await create_session(db, user.id, refresh_token, request)
 
     return user, access_token, refresh_token

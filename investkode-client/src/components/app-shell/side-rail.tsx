@@ -11,22 +11,24 @@ import {
   SignOutIcon,
 } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
-import { apiClient } from "@/lib/api-client";
+import { useLogout } from "@/features/auth/hooks";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 const nav = [
   { href: "/dashboard", icon: HouseIcon, label: "Dashboard" },
   { href: "/concalls", icon: PhoneCallIcon, label: "Concalls" },
-  { href: "/watchlist", icon: StarIcon, label: "Watchlist", active: true },
+  { href: "/watchlist", icon: StarIcon, label: "Watchlist" },
   { href: "/search", icon: MagnifyingGlassIcon, label: "Search" },
 ];
 
 export function SideRail() {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const logoutMutation = useLogout();
 
   useEffect(() => {
     setMounted(true);
@@ -34,15 +36,8 @@ export function SideRail() {
 
   const isDark = theme === "dark";
 
-  async function handleLogout() {
-    try {
-      await apiClient("/api/v1/auth/logout", { method: "POST" });
-      router.push("/auth");
-    } catch (error) {
-      console.error("Logout failed", error);
-      // Fallback redirect anyway
-      router.push("/auth");
-    }
+  function handleLogout() {
+    logoutMutation.mutate();
   }
 
   return (
@@ -53,6 +48,7 @@ export function SideRail() {
 
       {nav.map((item) => {
         const Icon = item.icon;
+        const isActive = pathname.startsWith(item.href);
 
         return (
           <Link
@@ -61,7 +57,7 @@ export function SideRail() {
             title={item.label}
             className={cn(
               "grid size-[34px] place-items-center rounded-[10px] text-[var(--ik-ink-2)] transition hover:bg-white/70 hover:text-[var(--ik-accent-deep)] dark:hover:bg-white/10",
-              item.active &&
+              isActive &&
                 "bg-[linear-gradient(135deg,var(--ik-accent),var(--ik-accent-2))] text-white shadow-[0_4px_12px_rgba(43,107,255,0.35)] dark:text-black"
             )}
           >

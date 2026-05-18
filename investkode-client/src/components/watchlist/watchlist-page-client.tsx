@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 import type { SortDirection } from "@/components/dynamic-view/types";
 import { DynamicViewRenderer } from "@/components/dynamic-view/dynamic-view-renderer";
@@ -16,6 +17,7 @@ import { WatchlistSkeleton } from "./watchlist-skeleton";
 
 export function WatchlistPageClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [activeTabId, setActiveTabId] = useState("all");
   const [tableMode, setTableMode] = useState<"client" | "server">("client");
 
@@ -133,17 +135,23 @@ export function WatchlistPageClient() {
     setSortDir("asc");
   }
 
+  const isUnauthorized =
+    viewQuery.error instanceof Error &&
+    viewQuery.error.message === "Unauthorized";
+
+  useEffect(() => {
+    if (isUnauthorized) {
+      queryClient.clear();
+      router.replace("/auth");
+    }
+  }, [isUnauthorized, router, queryClient]);
+
   if (viewQuery.isLoading) {
     return <WatchlistSkeleton />;
   }
 
   if (viewQuery.error || !processedResponse?.success) {
-    const isUnauthorized =
-      viewQuery.error instanceof Error &&
-      viewQuery.error.message === "Unauthorized";
-
     if (isUnauthorized) {
-      router.replace("/auth");
       return null;
     }
 
@@ -200,7 +208,14 @@ export function WatchlistPageClient() {
                   r.meta?.list_ids?.includes(activeTabId) ||
                   r.meta?.watchlist_id === activeTabId
               )
-              .map((r) => String(r.id || r.values.symbol))
+              .flatMap((r) => {
+                const arr = [String(r.id)];
+                if (r.meta?.fincode) arr.push(String(r.meta.fincode));
+                if (r.values?.symbol) arr.push(String(r.values.symbol));
+                const stockVal = r.values?.stock as any;
+                if (stockVal?.symbol) arr.push(String(stockVal.symbol));
+                return arr;
+              })
           )
         }
       />

@@ -214,33 +214,51 @@ export function WatchlistActionModal({
           type: selectedPresetType ?? "custom",
         });
 
-        for (const instrument of selectedInstruments) {
-          await addItemMutation.mutateAsync({
+        const additions = selectedInstruments.map((instrument) =>
+          addItemMutation.mutateAsync({
             watchlistId: newWatchlist.id,
             fincode: Number(instrument.fincode ?? instrument.id),
-          });
-        }
+          }).then(() => ({ success: true, symbol: instrument.symbol }))
+            .catch((err) => ({ success: false, symbol: instrument.symbol, error: err }))
+        );
 
-        toast.success("Watchlist created");
+        const results = await Promise.all(additions);
+        const failures = results.filter((r) => !r.success);
+
+        if (failures.length > 0) {
+          toast.warning(
+            `Watchlist created, but failed to add some stocks: ${failures.map((f) => f.symbol).join(", ")}`
+          );
+        } else {
+          toast.success("Watchlist created with selected stocks");
+        }
         onClose();
         return;
       }
 
       if (mode === "add") {
-        for (const instrument of selectedInstruments) {
-          await addItemMutation.mutateAsync({
+        const additions = selectedInstruments.map((instrument) =>
+          addItemMutation.mutateAsync({
             watchlistId: targetWatchlistId,
             fincode: Number(instrument.fincode ?? instrument.id),
-          });
-        }
+          }).then(() => ({ success: true, symbol: instrument.symbol }))
+            .catch((err) => ({ success: false, symbol: instrument.symbol, error: err }))
+        );
 
-        toast.success("Stocks added to list");
+        const results = await Promise.all(additions);
+        const failures = results.filter((r) => !r.success);
+
+        if (failures.length > 0) {
+          toast.warning(
+            `Failed to add some stocks: ${failures.map((f) => f.symbol).join(", ")}`
+          );
+        } else {
+          toast.success("Stocks added successfully");
+        }
         onClose();
       }
-    } catch {
-      /**
-       * Hook-level onError already shows toast.
-       */
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "An unexpected error occurred");
     }
   }
 
@@ -512,7 +530,10 @@ function InstrumentSearchStep({
         {instruments.length ? (
           instruments.map((instrument) => {
             const instrumentId = getInstrumentId(instrument);
-            const isTracked = trackedFincodes?.has(instrumentId) || trackedFincodes?.has(String(instrument.fincode));
+            const isTracked = 
+              trackedFincodes?.has(instrumentId) || 
+              trackedFincodes?.has(String(instrument.fincode)) ||
+              trackedFincodes?.has(instrument.symbol);
             const selected = selectedInstrumentIds.has(instrumentId) || isTracked;
             const isUp = Number(instrument.change ?? 0) >= 0;
 

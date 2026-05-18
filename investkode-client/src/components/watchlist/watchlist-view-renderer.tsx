@@ -115,6 +115,7 @@ export function WatchlistViewRenderer({
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={onSortChange}
+          isClientSort={view.features?.client_sorting}
         />
       </div>
 

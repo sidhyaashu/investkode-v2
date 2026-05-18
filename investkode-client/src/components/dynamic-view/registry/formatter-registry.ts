@@ -21,11 +21,7 @@ export function formatValue(value: unknown, formatter?: Formatter, row?: any) {
     
     // Convert to Crores
     const cr = absoluteRupees / 10000000;
-    
-    // If over 100,000 Cr, show as L Cr (Lakh Crores)
-    if (cr >= 100000) {
-      return `₹${(cr / 100000).toFixed(2)} L Cr`;
-    }
+    // Always display in Crores (Cr) for consistency
     return `₹${cr.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`;
   }
 
@@ -35,10 +31,10 @@ export function formatValue(value: unknown, formatter?: Formatter, row?: any) {
     return `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
   }
 
-  if (formatter === "pe") {
+  if (formatter === "pe" || formatter === "ratio") {
     const n = Number(value);
     if (Number.isNaN(n)) return String(value);
-    return n.toFixed(1);
+    return n.toFixed(2);
   }
 
   if (formatter === "number") {

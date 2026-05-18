@@ -83,7 +83,7 @@ export function DataGridRenderer({
           </div>
         ) : null}
 
-      <section className="overflow-hidden rounded-[18px] border border-[var(--ik-glass-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.55))] shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_8px_24px_-10px_rgba(43,69,112,0.16)] backdrop-blur-xl dark:bg-[linear-gradient(180deg,rgba(22,22,25,0.82),rgba(15,15,18,0.74))]">
+      <section className="overflow-hidden rounded-[18px] border border-[var(--ik-glass-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.93))] shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_8px_24px_-10px_rgba(43,69,112,0.16)] dark:bg-[linear-gradient(180deg,rgba(22,22,25,0.97),rgba(15,15,18,0.95))]">
         <div className="flex items-center justify-between border-b border-[var(--ik-rule)] px-[18px] py-3.5">
           <div className="flex items-center gap-2 font-sans text-sm font-semibold text-[var(--ik-ink)]">
             <StarIcon size={16} className="text-[var(--ik-accent-deep)]" />

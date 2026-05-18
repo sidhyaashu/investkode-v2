@@ -72,6 +72,19 @@ class WatchlistDataSource:
             "user_id": user_id,
         }
 
+        # Resolve sector cross-database if filtering server-side
+        matching_fincodes = None
+        if mode == "server" and sector:
+            try:
+                sector_stmt = select(CompanyMaster.fincode).where(
+                    CompanyMaster.industry.ilike(f"%{sector}%")
+                )
+                sector_result = await self.financial_db.execute(sector_stmt)
+                matching_fincodes = [r[0] for r in sector_result.all()]
+            except Exception as e:
+                logger.error(f"Error fetching matching fincodes for sector: {e}")
+                matching_fincodes = []
+
         if watchlist_id and watchlist_id != "all":
             where.append("w.id = :watchlist_id")
             params["watchlist_id"] = watchlist_id
@@ -95,8 +108,11 @@ class WatchlistDataSource:
                 params["exchange"] = exchange
 
             if sector:
-                where.append("LOWER(COALESCE(wi.sector, '')) LIKE LOWER(:sector)")
-                params["sector"] = f"%{sector}%"
+                if matching_fincodes:
+                    where.append("wi.fincode = ANY(:matching_fincodes)")
+                    params["matching_fincodes"] = matching_fincodes
+                else:
+                    where.append("1 = 0")
 
         where_sql = " AND ".join(where)
 
@@ -122,8 +138,18 @@ class WatchlistDataSource:
         # and then enrichment. 
         # TODO: Handle server-side sorting by financial metrics properly by joining or fetching all IDs.
 
-        order_column = allowed_sort_keys.get(sort_key, "wi.position")
-        order_direction = "DESC" if sort_dir == "desc" else "ASC"
+        # Dynamic mode override: if total_rows is small, force client mode to fetch all rows
+        if mode == "server" and total_rows <= 100:
+            mode = "client"
+
+        # If we are in client mode, the frontend will handle sorting by market_cap etc.
+        # We just return them in default position order to prevent SQL column errors.
+        if mode == "client":
+            order_column = "wi.position"
+            order_direction = "ASC"
+        else:
+            order_column = allowed_sort_keys.get(sort_key, "wi.position")
+            order_direction = "DESC" if sort_dir == "desc" else "ASC"
 
         limit_sql = ""
         if mode == "server":
@@ -164,36 +190,80 @@ class WatchlistDataSource:
         
         if fincodes:
             try:
-                # 1. Fetch latest price for change % calculation
-                # Using a subquery to get the latest year/month for each fincode
-                latest_price_stmt = text("""
-                    SELECT DISTINCT ON (fincode)
-                        fincode, "open", "close"
-                    FROM public.nse_monthprice
-                    WHERE fincode = ANY(:fincodes)
-                    ORDER BY fincode, "year" DESC, "month" DESC
-                """)
+                # Separate fincodes by exchange
+                nse_fincodes = [row["fincode"] for row in auth_rows if row.get("fincode") and row.get("exchange") == "NSE"]
+                bse_fincodes = [row["fincode"] for row in auth_rows if row.get("fincode") and row.get("exchange") == "BSE"]
                 
-                # 2. Fetch 52w high/low stats
-                # We'll take the last 12 months (approx)
-                # Since today is 2026-05, we look back to 2025-05
-                stats_stmt = text("""
-                    SELECT 
-                        fincode,
-                        MIN(low) as low_52w,
-                        MAX(high) as high_52w
-                    FROM public.nse_monthprice
-                    WHERE fincode = ANY(:fincodes)
-                      AND (year * 100 + month) >= 202505
-                    GROUP BY fincode
-                """)
-
-                # Execute queries
-                latest_prices = await self.financial_db.execute(latest_price_stmt, {"fincodes": fincodes})
-                price_map = {row[0]: {"open": float(row[1]), "close": float(row[2])} for row in latest_prices}
-
-                stats_results = await self.financial_db.execute(stats_stmt, {"fincodes": fincodes})
-                stats_map = {row[0]: {"low_52w": float(row[1]), "high_52w": float(row[2])} for row in stats_results}
+                price_map = {}
+                stats_map = {}
+                
+                # Fetch NSE latest prices and stats
+                if nse_fincodes:
+                    latest_nse_stmt = text("""
+                        SELECT DISTINCT ON (fincode)
+                            fincode, "open", "close"
+                        FROM public.nse_monthprice
+                        WHERE fincode = ANY(:fincodes)
+                        ORDER BY fincode, "year" DESC, "month" DESC
+                    """)
+                    stats_nse_stmt = text("""
+                        SELECT 
+                            fincode,
+                            MIN(low) as low_52w,
+                            MAX(high) as high_52w
+                        FROM public.nse_monthprice
+                        WHERE fincode = ANY(:fincodes)
+                          AND (year * 100 + month) >= 202505
+                        GROUP BY fincode
+                    """)
+                    
+                    nse_prices = await self.financial_db.execute(latest_nse_stmt, {"fincodes": nse_fincodes})
+                    for row in nse_prices:
+                        price_map[row[0]] = {
+                            "open": float(row[1]) if row[1] is not None else None,
+                            "close": float(row[2]) if row[2] is not None else None
+                        }
+                        
+                    nse_stats = await self.financial_db.execute(stats_nse_stmt, {"fincodes": nse_fincodes})
+                    for row in nse_stats:
+                        stats_map[row[0]] = {
+                            "low_52w": float(row[1]) if row[1] is not None else None,
+                            "high_52w": float(row[2]) if row[2] is not None else None
+                        }
+                
+                # Fetch BSE latest prices and stats
+                if bse_fincodes:
+                    latest_bse_stmt = text("""
+                        SELECT DISTINCT ON (fincode)
+                            fincode, "open", "close"
+                        FROM public.monthlyprice
+                        WHERE fincode = ANY(:fincodes)
+                        ORDER BY fincode, "year" DESC, "month" DESC
+                    """)
+                    stats_bse_stmt = text("""
+                        SELECT 
+                            fincode,
+                            MIN(low) as low_52w,
+                            MAX(high) as high_52w
+                        FROM public.monthlyprice
+                        WHERE fincode = ANY(:fincodes)
+                          AND (year * 100 + month) >= 202505
+                        GROUP BY fincode
+                    """)
+                    
+                    bse_prices = await self.financial_db.execute(latest_bse_stmt, {"fincodes": bse_fincodes})
+                    for row in bse_prices:
+                        price_map[row[0]] = {
+                            "open": float(row[1]) if row[1] is not None else None,
+                            "close": float(row[2]) if row[2] is not None else None
+                        }
+                        
+                    bse_stats = await self.financial_db.execute(stats_bse_stmt, {"fincodes": bse_fincodes})
+                    for row in bse_stats:
+                        stats_map[row[0]] = {
+                            "low_52w": float(row[1]) if row[1] is not None else None,
+                            "high_52w": float(row[2]) if row[2] is not None else None
+                        }
 
                 # 3. Query financial_db for equity metrics and sector
                 equity_stmt = (
@@ -210,7 +280,7 @@ class WatchlistDataSource:
                     open_price = price_info.get("open")
                     close_price = price_info.get("close")
                     
-                    change_pct = 0.0
+                    change_pct = None
                     if open_price and close_price and open_price != 0:
                         change_pct = ((close_price - open_price) / open_price) * 100
 
