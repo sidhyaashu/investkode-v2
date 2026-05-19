@@ -47,6 +47,31 @@ type InstrumentResult = {
   change?: number | null;
 };
 
+const instrumentAvatarGradients = [
+  "from-[#2563EB] to-[#06B6D4]",
+  "from-[#7C3AED] to-[#EC4899]",
+  "from-[#059669] to-[#84CC16]",
+  "from-[#EA580C] to-[#FACC15]",
+  "from-[#DC2626] to-[#F97316]",
+  "from-[#0891B2] to-[#4F46E5]",
+  "from-[#9333EA] to-[#2563EB]",
+  "from-[#16A34A] to-[#0D9488]",
+  "from-[#BE123C] to-[#F59E0B]",
+  "from-[#0F766E] to-[#22C55E]",
+];
+
+function getStableAvatarGradient(value: string) {
+  let hash = 0;
+
+  for (let i = 0; i < value.length; i += 1) {
+    hash = value.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return instrumentAvatarGradients[
+    Math.abs(hash) % instrumentAvatarGradients.length
+  ];
+}
+
 function formatPrice(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return "—";
@@ -73,7 +98,35 @@ function useDebouncedValue<T>(value: T, delay = 300) {
 }
 
 function getInstrumentId(instrument: InstrumentResult) {
-  return String(instrument.id || instrument.instrument_id || instrument.symbol);
+  return String(
+    instrument.fincode ??
+      instrument.instrument_id ??
+      instrument.id ??
+      instrument.symbol
+  );
+}
+
+function getInstrumentFincode(instrument: InstrumentResult) {
+  return instrument.fincode === null || instrument.fincode === undefined
+    ? ""
+    : String(instrument.fincode);
+}
+
+function isInstrumentAlreadyTracked(
+  instrument: InstrumentResult,
+  trackedFincodes?: Set<string>
+) {
+  if (!trackedFincodes?.size) return false;
+
+  const fincode = getInstrumentFincode(instrument);
+  const id = getInstrumentId(instrument);
+  const symbol = String(instrument.symbol);
+
+  return (
+    Boolean(fincode && trackedFincodes.has(fincode)) ||
+    trackedFincodes.has(id) ||
+    trackedFincodes.has(symbol)
+  );
 }
 
 export function WatchlistActionModal({
@@ -86,54 +139,29 @@ export function WatchlistActionModal({
 }: WatchlistActionModalProps) {
   const [step, setStep] = useState(1);
 
-  /**
-   * Create-list state.
-   * Server sends only semantic preset type.
-   * Client maps type to UI style through watchlistTypeStyle.
-   */
   const [selectedPresetType, setSelectedPresetType] =
     useState<WatchlistType | null>(null);
   const [customListName, setCustomListName] = useState("");
 
-  /**
-   * Add-stock/search state.
-   * This search always calls backend because it searches financial DB.
-   */
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const [selectedInstruments, setSelectedInstruments] = useState<
     InstrumentResult[]
   >([]);
 
-  /**
-   * Add mode destination.
-   * Add-stock flow cannot create a new list here.
-   * User can only select existing default/custom lists.
-   */
   const selectableLists = useMemo(() => {
     return lists.filter((list) => list.id !== "all");
   }, [lists]);
 
   const [targetWatchlistId, setTargetWatchlistId] = useState(
-    initialWatchlistId || (selectableLists.length === 1 ? selectableLists[0].id : "")
+    initialWatchlistId ||
+      (selectableLists.length === 1 ? selectableLists[0].id : "")
   );
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const createMutation = useCreateWatchlist();
   const addItemMutation = useAddItem();
-
-  /**
-   * ✅ These two hooks belong here.
-   *
-   * useInstrumentSearch(debouncedSearch)
-   * - used when user types in modal search
-   * - always API call through gateway
-   *
-   * usePopularInstruments()
-   * - used when modal search is empty
-   * - shows suggested/popular instruments from backend
-   */
 
   const { data: searchResults = [], isLoading: isSearching } =
     useInstrumentSearch(debouncedSearch);
@@ -170,6 +198,11 @@ export function WatchlistActionModal({
   }, [onClose]);
 
   function toggleInstrument(instrument: InstrumentResult) {
+    if (isInstrumentAlreadyTracked(instrument, trackedFincodes)) {
+      toast.info(`${instrument.symbol} is already in this watchlist`);
+      return;
+    }
+
     const instrumentId = getInstrumentId(instrument);
 
     setSelectedInstruments((prev) => {
@@ -203,8 +236,7 @@ export function WatchlistActionModal({
             ? !targetWatchlistId
             : false;
 
-  const isSubmitting =
-    createMutation.isPending || addItemMutation.isPending;
+  const isSubmitting = createMutation.isPending || addItemMutation.isPending;
 
   async function handleFinish() {
     try {
@@ -215,50 +247,70 @@ export function WatchlistActionModal({
         });
 
         const additions = selectedInstruments.map((instrument) =>
-          addItemMutation.mutateAsync({
-            watchlistId: newWatchlist.id,
-            fincode: Number(instrument.fincode ?? instrument.id),
-          }).then(() => ({ success: true, symbol: instrument.symbol }))
-            .catch((err) => ({ success: false, symbol: instrument.symbol, error: err }))
+          addItemMutation
+            .mutateAsync({
+              watchlistId: newWatchlist.id,
+              fincode: Number(instrument.fincode ?? instrument.id),
+            })
+            .then(() => ({ success: true, symbol: instrument.symbol }))
+            .catch((err) => ({
+              success: false,
+              symbol: instrument.symbol,
+              error: err,
+            }))
         );
 
         const results = await Promise.all(additions);
-        const failures = results.filter((r) => !r.success);
+        const failures = results.filter((result) => !result.success);
 
         if (failures.length > 0) {
           toast.warning(
-            `Watchlist created, but failed to add some stocks: ${failures.map((f) => f.symbol).join(", ")}`
+            `Watchlist created, but failed to add some stocks: ${failures
+              .map((failure) => failure.symbol)
+              .join(", ")}`
           );
         } else {
           toast.success("Watchlist created with selected stocks");
         }
+
         onClose();
         return;
       }
 
       if (mode === "add") {
         const additions = selectedInstruments.map((instrument) =>
-          addItemMutation.mutateAsync({
-            watchlistId: targetWatchlistId,
-            fincode: Number(instrument.fincode ?? instrument.id),
-          }).then(() => ({ success: true, symbol: instrument.symbol }))
-            .catch((err) => ({ success: false, symbol: instrument.symbol, error: err }))
+          addItemMutation
+            .mutateAsync({
+              watchlistId: targetWatchlistId,
+              fincode: Number(instrument.fincode ?? instrument.id),
+            })
+            .then(() => ({ success: true, symbol: instrument.symbol }))
+            .catch((err) => ({
+              success: false,
+              symbol: instrument.symbol,
+              error: err,
+            }))
         );
 
         const results = await Promise.all(additions);
-        const failures = results.filter((r) => !r.success);
+        const failures = results.filter((result) => !result.success);
 
         if (failures.length > 0) {
           toast.warning(
-            `Failed to add some stocks: ${failures.map((f) => f.symbol).join(", ")}`
+            `Failed to add some stocks: ${failures
+              .map((failure) => failure.symbol)
+              .join(", ")}`
           );
         } else {
           toast.success("Stocks added successfully");
         }
+
         onClose();
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An unexpected error occurred");
+      toast.error(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
     }
   }
 
@@ -314,8 +366,8 @@ export function WatchlistActionModal({
             />
           ) : null}
 
-          {((mode === "add" && step === 1) ||
-            (mode === "create" && step === 2)) ? (
+          {(mode === "add" && step === 1) ||
+          (mode === "create" && step === 2) ? (
             <InstrumentSearchStep
               inputRef={inputRef}
               searchQuery={searchQuery}
@@ -530,12 +582,17 @@ function InstrumentSearchStep({
         {instruments.length ? (
           instruments.map((instrument) => {
             const instrumentId = getInstrumentId(instrument);
-            const isTracked = 
-              trackedFincodes?.has(instrumentId) || 
-              trackedFincodes?.has(String(instrument.fincode)) ||
-              trackedFincodes?.has(instrument.symbol);
-            const selected = selectedInstrumentIds.has(instrumentId) || isTracked;
+            const isTracked = isInstrumentAlreadyTracked(
+              instrument,
+              trackedFincodes
+            );
+            const isSelected = selectedInstrumentIds.has(instrumentId);
+            const selected = isSelected || isTracked;
             const isUp = Number(instrument.change ?? 0) >= 0;
+
+            const avatarGradient = getStableAvatarGradient(
+              String(instrument.fincode ?? instrument.symbol ?? instrument.id)
+            );
 
             return (
               <button
@@ -543,24 +600,31 @@ function InstrumentSearchStep({
                 type="button"
                 onClick={() => onToggleInstrument(instrument)}
                 className={cn(
-                  "grid w-full grid-cols-[auto_1fr_auto_auto] items-center gap-[11px] rounded-[9px] px-3 py-2.5 text-left transition hover:bg-[var(--ik-accent-soft)] dark:hover:bg-white/[0.05]",
-                  selected && "bg-[var(--ik-accent-soft)]"
+                  "mb-1 grid w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-[11px] rounded-[9px] px-3 py-2.5 text-left transition hover:bg-[var(--ik-accent-soft)] dark:hover:bg-white/[0.05]",
+                  selected && "bg-[var(--ik-accent-soft)]",
+                  isTracked &&
+                    "cursor-not-allowed opacity-80"
                 )}
               >
-                <div className="grid size-[30px] place-items-center rounded-lg bg-[linear-gradient(135deg,var(--ik-accent),var(--ik-accent-2))] font-mono text-[10.5px] font-bold text-white dark:text-black">
-                  {instrument.symbol?.slice(0, 2) || "ST"}
+                <div
+                  className={cn(
+                    "grid size-[30px] shrink-0 place-items-center rounded-lg bg-gradient-to-br font-mono text-[10.5px] font-bold text-white shadow-sm",
+                    avatarGradient
+                  )}
+                >
+                  {instrument.symbol?.slice(0, 2).toUpperCase() || "ST"}
                 </div>
 
                 <div className="min-w-0">
                   <div className="truncate font-sans text-[13px] font-semibold text-[var(--ik-ink)]">
                     {instrument.name}
                   </div>
-                  <div className="mt-px font-mono text-[11px] text-[var(--ik-ink-3)]">
+                  <div className="mt-px truncate font-mono text-[11px] text-[var(--ik-ink-3)]">
                     {instrument.symbol} · {instrument.exchange || "NSE"}
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="shrink-0 text-right">
                   <div className="font-mono text-xs font-semibold text-[var(--ik-ink)]">
                     ₹{formatPrice(instrument.last_price)}
                   </div>
@@ -577,13 +641,16 @@ function InstrumentSearchStep({
                   </div>
                 </div>
 
-                {selected ? (
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-[var(--ik-good)]">
-                    <Check className="size-3" strokeWidth={3} />
+                {isTracked ? (
+                  <div className="shrink-0 whitespace-nowrap rounded-full bg-[var(--ik-good-soft)] px-2 py-1 text-[10.5px] font-semibold text-[var(--ik-good)]">
                     Added
                   </div>
+                ) : isSelected ? (
+                  <div className="shrink-0 whitespace-nowrap rounded-full bg-[var(--ik-accent-soft)] px-2 py-1 text-[10.5px] font-semibold text-[var(--ik-accent-deep)]">
+                    Selected
+                  </div>
                 ) : (
-                  <div className="grid size-[30px] place-items-center rounded-lg bg-[var(--ik-accent-soft)] text-[var(--ik-accent-deep)]">
+                  <div className="grid size-[30px] shrink-0 place-items-center rounded-lg bg-[var(--ik-accent-soft)] text-[var(--ik-accent-deep)]">
                     <Plus className="size-4" strokeWidth={2.4} />
                   </div>
                 )}

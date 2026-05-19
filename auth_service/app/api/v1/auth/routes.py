@@ -385,6 +385,7 @@ async def google_callback(
     )
 
     await log_event(db, "google_login", "success", user.id, request)
+    await db.commit()
     return redirect_res
 
 

@@ -23,10 +23,8 @@ async def lifespan(app: FastAPI):
 
     try:
         async with watchlist_engine.begin() as conn:
-            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS app"))
-            await conn.run_sync(Base.metadata.create_all)
             await conn.execute(text("SELECT 1"))
-        logger.info("Watchlist database connected and schema verified")
+        logger.info("Watchlist database connected")
     except Exception as e:
         logger.exception("Watchlist database connection failed")
         raise RuntimeError("Watchlist database startup check failed") from e
